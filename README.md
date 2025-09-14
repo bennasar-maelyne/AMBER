@@ -89,7 +89,7 @@ Enter a parameter name to change, or type 'none' to continue:
 you can reply 'dt' to change the time step for each iteration. Choose all the parameters you want to change, then type 'none' to continue.
 Then you will be prompted to enter the values for each parameter you chose to change for each iteration.
 
-The script will then run all simulations and store them in an output folder. You'll find that the folder hierarchy goes through dates, name of config file and pyhton
+The script will then run all simulations and store them in an output folder. You'll find that the folder hierarchy goes through dates, name of config file and python
 script, and then the iteration number. The output folder will contain all the data from the simulation, including the CONFIG file used for each iteration.
 The output folder will also contain a log file with the date and time of the simulation, as well as the parameters used for each iteration stored in a .csv file.
 If you'd like to change the seed to some random value I recommand setting it to -1 in the CONFIG file. The script will then generate a random seed for each iteration.
@@ -97,3 +97,8 @@ If you'd like to change the seed to some random value I recommand setting it to 
 To easily read the results of your simulations you can run the plotting,py script by changing the output folder directory you want to use and the name of the parameters you want to look at.
 You can also change t_min, t_max and choose to plot the results for all iterations or just a few of them.
 
+## Generating synthetic imaging 
+
+Three types of imaging are implemented in this version of AMBER: CT scan, MRIs (T1-weighted, T2-weighted, etc) and Diffusion MRIs. Parameters are to be defined in the CONFIG file by the user depending on the sequence and the type of imaging wanted. 
+
+For Diffusion MRIs in particular, a lookup table with signal intensity depending on acquisition parameters is part of the files. The value for the acquisition parameters cannot be changed during the simulation or between two timestep. However, it is possible to test different acquisition parameters easily using the Jupyter Notebooks DWI_opt.ipynb (only one type of cell) and DWI_opt_nec.ipynb (alive and dead cells).
