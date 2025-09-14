@@ -183,6 +183,10 @@ class World: # class that contains the voxels and the vasculature
     def find_voxel_number(self, position):
         num_voxels = self.number_of_voxels
         voxel_length = 2 * self.half_length / num_voxels
+        
+        #print("position:", position)
+        #print("half_length:", self.half_length)
+        #print("voxel_length:", voxel_length)
         i = int(round((position[0] + self.half_length - voxel_length / 2) / voxel_length))
         j = int(round((position[1] + self.half_length - voxel_length / 2) / voxel_length))
         k = int(round((position[2] + self.half_length - voxel_length / 2) / voxel_length))
@@ -315,16 +319,19 @@ class World: # class that contains the voxels and the vasculature
 
             vector_to_center = voxel_i.position - center_of_mass
             distance = np.linalg.norm(vector_to_center)
+            if distance == 0:
+                continue  # this voxel is at the center — skip migration toward center
+            
             # Scale the step size to ensure it corresponds to a valid neighboring voxel
             step_vector = (vector_to_center / distance) * (side)  # Adjust the factor as needed
             new_position = voxel_i.position - step_vector
             # Find the nearest voxel to the new position
             neighbor_towards_center = self.find_voxel_number(new_position)
             #print('voxel', voxel_i.voxel_number)
-            print('neighbor_towards_center', neighbor_towards_center)
-
+            #print('neighbor_towards_center', neighbor_towards_center)
+            
             m_cells = self.config.pressure_coefficient_central_migration * (side**3) * dt * (distance ** 2)
-            print('m_cells', m_cells)
+            #print('m_cells', m_cells)
             migration_matrix[i, neighbor_towards_center] += m_cells
 
         # Convert the lil_matrix to a csr_matrix for faster arithmetic operations
@@ -378,10 +385,12 @@ class World: # class that contains the voxels and the vasculature
             raise ValueError('Error: the number of doses is not equal to the number of voxels, Probably due to a unmatching Topas simulation')
         for voxel in self.voxel_list:
             voxel.dose = doses[voxel.voxel_number]
+            print('Voxel dose is ',voxel.dose)
         return
 
     def update_capillaries(self, n_capillaries_per_VVD=1, capillary_length=5): #updates the number of capillaries in each voxel
-        print('-- Computing capillaries map')
+        print('-- Computing capillaries map an number of voxels:',len(self.voxel_list))
+        print(f"Number of voxels: {len(self.voxel_list)}")
         side = self.voxel_list[0].half_length * 2
         for voxel in self.voxel_list:
             voxel.n_capillaries = int((voxel.vessel_volume / side) * n_capillaries_per_VVD) #vessel volume density in voxel * number of capillaries per VVD
@@ -396,8 +405,10 @@ class World: # class that contains the voxels and the vasculature
                 for neighbor in list_neighbors:
                     sum += neighbor.n_capillaries
                 new_oxygen_map[voxel.voxel_number] = sum / (1 + len(list_neighbors))
+                #print('New average oxygen value is ',new_oxygen_map[voxel.voxel_number])
             for voxel in self.voxel_list:
                 voxel.n_capillaries = int(new_oxygen_map[voxel.voxel_number])
+                #print('Number of capillaries in voxel ',voxel.voxel_number,' is ',voxel.n_capillaries)
         return
 
     def oxygen_map(self):
@@ -504,8 +515,10 @@ class World: # class that contains the voxels and the vasculature
         values = []
         positions = []
         for voxel in voxel_list:
+            #print('Voxel VEGF is ',voxel.molecular_factors['VEGF'])
             if factor is not None and isinstance(getattr(voxel, voxel_attribute), dict):
                 value = getattr(voxel, voxel_attribute)[factor]
+                #print('Value of VEGF is ',value)
             else:
                 value = getattr(voxel, voxel_attribute)() if callable(getattr(voxel, voxel_attribute)) else getattr(
                     voxel, voxel_attribute)

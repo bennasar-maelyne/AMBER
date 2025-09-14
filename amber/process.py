@@ -5,10 +5,19 @@ import amber.terminal as term
 import amber.ReadAndWrite as rw
 import pandas as pd
 from matplotlib.colors import TwoSlopeNorm
+from matplotlib.colors import Normalize
 import matplotlib.pyplot as plt
 import os
 from time import time as current_time
 import math
+from matplotlib.widgets import Slider
+from mpl_toolkits.mplot3d import Axes3D
+from scipy.ndimage import gaussian_filter
+from matplotlib.patches import Rectangle
+import matplotlib.colors as colors
+from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
+from pydicom.uid import ExplicitVRLittleEndian, generate_uid
+import datetime
 
 class Simulator: #this class is used to run the whole simulation
 
@@ -26,7 +35,7 @@ class Simulator: #this class is used to run the whole simulation
         if not os.path.exists('Plots/'):
             os.makedirs('Plots/')
 
-    def show_center_of_mass(self, center_of_mass, times): #3D plot of the center of mass
+    def center_of_mass(self, center_of_mass, times): #3D plot of the center of mass
         #3D plot of the center of mass
         #set dpi to 300 for high quality
         size = self.config.half_length_world
@@ -55,6 +64,8 @@ class Simulator: #this class is used to run the whole simulation
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 12))
         #change font size
         plt.rcParams.update({'font.size': 14})
+        
+        
         # Plot number of cells evolution
         ax1.plot(times, number_tumor_cells, 'blue', label='All cells')
         ax1.plot(times, number_cycling_cells, 'red', label='Cycling cells')
@@ -90,6 +101,7 @@ class Simulator: #this class is used to run the whole simulation
             plt.close()
         else:
             plt.show()
+
     def show(self, world: World, t = 0): #this function is used to show the world at a certain time
         print('Showing world at time : ', t)
         start = current_time()
@@ -98,6 +110,7 @@ class Simulator: #this class is used to run the whole simulation
             os.makedirs('Plots/CurrentPlotting/')
 
         size = world.half_length
+        print('World half length is',world.half_length)
 
         if self.config.show_angiogenesis_metrics: #if angiogenesis metrics are to be shown, show them
             print('Showing angiogenesis metrics')
@@ -155,26 +168,50 @@ class Simulator: #this class is used to run the whole simulation
             print('Showing slices')
             fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(14, 12))
             fig.suptitle('t = ' + str(t) + 'h', fontsize=16)
+            voxel_side = 2*self.config.half_length_world / self.config.voxel_per_side
 
             axes[0, 0].set_xlim(-size, size)
             axes[0, 0].set_ylim(-size, size)
-            world.show_tumor_slice(axes[0, 0], fig, 'occupied_volume_fraction', levels= np.linspace(0, 1, 11), cmap='viridis', extend = 'neither')
+            world.show_tumor_slice(axes[0, 0], fig, 'number_of_alive_cells', levels= np.linspace(1, 1000, 11), cmap='viridis', extend = 'neither')
+            #plot the three voxels that are used for o2 histograms
+            axes[0, 0].plot(0, 0, 'bo', label='Point')
+            axes[0, 0].annotate(f'({0}, {0})', xy=(0, 0), xytext=(3, 3), textcoords='offset points', fontsize=9, color='black')
+            axes[0, 0].plot(3*voxel_side, 3*voxel_side, 'bo', label='Point')
+            axes[0, 0].annotate(f'({round(3*voxel_side,1)}, {round(3*voxel_side,1)})', xy=(3*voxel_side, 3*voxel_side), xytext=(3, 3), textcoords='offset points', fontsize=9, color='black')
+            axes[0, 0].plot(1.5*voxel_side, 1.5*voxel_side, 'bo', label='Point')
+            axes[0, 0].annotate(f'({round(1.5*voxel_side,1)}, {round(1.5*voxel_side,1)})', xy=(1.5*voxel_side, 1.5*voxel_side), xytext=(3, 3), textcoords='offset points', fontsize=9, color='black')
+
             axes[0,0].grid(True)
             axes[0,0].set_facecolor('whitesmoke')
-            axes[0, 0].set_title('Number of Cells', fontsize=font)
+            axes[0, 0].set_title('Number of Alive Tumor Cells', fontsize=font)
 
-            norm = TwoSlopeNorm(vmin=0, vcenter=10, vmax=110)
+            norm = TwoSlopeNorm(vmin=0, vcenter=20, vmax=110)
+            #norm = Normalize(vmin=0, vmax=110)
 
             axes[0, 1].set_xlim(-size, size)
             axes[0, 1].set_ylim(-size, size)
-            world.show_tumor_slice(axes[0, 1], fig, 'n_capillaries', cmap = 'RdBu', norm = norm, levels= np.linspace(0, 100, 11), round_n = 0)
+            world.show_tumor_slice(axes[0, 1], fig, 'n_capillaries', cmap = 'RdBu', norm = norm, levels= np.linspace(0, 50, 11), round_n = 0)
+            #plot the three voxels that are used for o2 histograms
+            axes[0, 1].plot(0, 0, 'bo', label='Point')
+            axes[0, 1].annotate(f'({0}, {0})', xy=(0, 0), xytext=(5, 5), textcoords='offset points', fontsize=9, color='black')
+            axes[0, 1].plot(3*voxel_side, 3*voxel_side, 'bo', label='Point')
+            axes[0, 1].annotate(f'({round(3*voxel_side,1)}, {round(3*voxel_side,1)})', xy=(3*voxel_side, 3*voxel_side), xytext=(5, 5), textcoords='offset points', fontsize=9, color='black')
+            axes[0, 1].plot(1.5*voxel_side, 1.5*voxel_side, 'bo', label='Point')
+            axes[0, 1].annotate(f'({round(1.5*voxel_side,1)}, {round(1.5*voxel_side,1)})', xy=(1.5*voxel_side, 1.5*voxel_side), xytext=(5, 5), textcoords='offset points', fontsize=9, color='black')
             axes[0, 1].grid(True)
             axes[0, 1].set_facecolor('whitesmoke')
             axes[0, 1].set_title('Number of Capillaries', fontsize=font)
 
             axes[1, 0].set_xlim(-size, size)
             axes[1, 0].set_ylim(-size, size)
-            world.show_tumor_slice(axes[1, 0], fig, 'molecular_factors', factor='VEGF', levels= np.linspace(0.001, 1.0, 11), cmap='Oranges', round_n = 2)
+            world.show_tumor_slice(axes[1, 0], fig, 'molecular_factors', factor='VEGF', levels= np.linspace(0.001, 1, 11), cmap='Oranges', round_n = 2)
+            #plot the three voxels that are used for o2 histograms
+            axes[1, 0].plot(0, 0, 'bo', label='Point')
+            axes[1, 0].annotate(f'({0}, {0})', xy=(0, 0), xytext=(5, 5), textcoords='offset points', fontsize=9, color='black')
+            axes[1, 0].plot(3*voxel_side, 3*voxel_side, 'bo', label='Point')
+            axes[1, 0].annotate(f'({round(3*voxel_side,1)}, {round(3*voxel_side,1)})', xy=(3*voxel_side, 3*voxel_side), xytext=(5, 5), textcoords='offset points', fontsize=9, color='black')
+            axes[1, 0].plot(1.5*voxel_side, 1.5*voxel_side, 'bo', label='Point')
+            axes[1, 0].annotate(f'({round(1.5*voxel_side,1)}, {round(1.5*voxel_side,1)})', xy=(1.5*voxel_side, 1.5*voxel_side), xytext=(5, 5), textcoords='offset points', fontsize=9, color='black')
             axes[1, 0].grid(True)
             axes[1, 0].set_facecolor('whitesmoke')
             axes[1, 0].set_title('VEGF concentration', fontsize=font)
@@ -182,6 +219,13 @@ class Simulator: #this class is used to run the whole simulation
             axes[1, 1].set_xlim(-size, size)
             axes[1, 1].set_ylim(-size, size)
             world.show_tumor_slice(axes[1, 1], fig, 'number_of_necrotic_cells', levels= np.linspace(1, 1001, 11), cmap='viridis', extend = 'neither')
+            #plot the three voxels that are used for o2 histograms
+            axes[1, 1].plot(0, 0, 'bo', label='Point')
+            axes[1, 1].annotate(f'({0}, {0})', xy=(0, 0), xytext=(5, 5), textcoords='offset points', fontsize=9, color='black')
+            axes[1, 1].plot(3*voxel_side, 3*voxel_side, 'bo', label='Point')
+            axes[1, 1].annotate(f'({round(3*voxel_side,1)}, {round(3*voxel_side,1)})', xy=(3*voxel_side, 3*voxel_side), xytext=(5, 5), textcoords='offset points', fontsize=9, color='black')
+            axes[1, 1].plot(1.5*voxel_side, 1.5*voxel_side, 'bo', label='Point')
+            axes[1, 1].annotate(f'({round(1.5*voxel_side,1)}, {round(1.5*voxel_side,1)})', xy=(1.5*voxel_side, 1.5*voxel_side), xytext=(5, 5), textcoords='offset points', fontsize=9, color='black')
             axes[1, 1].grid(True)
             axes[1, 1].set_facecolor('whitesmoke')
             axes[1, 1].set_title('Number of Necrotic Cells', fontsize=font)
@@ -197,9 +241,10 @@ class Simulator: #this class is used to run the whole simulation
             print('Showing histograms')
             voxel_side = 2*self.config.half_length_world / self.config.voxel_per_side
 
-            voxels_positions = [[0,0,0], [3*voxel_side, 3*voxel_side, 3*voxel_side], [5*voxel_side, 5*voxel_side, 5*voxel_side]]
+            voxels_positions = [[0,0,0], [1.5*voxel_side, 1.5*voxel_side, 1.5*voxel_side], [3*voxel_side, 3*voxel_side, 3*voxel_side]]
             fig, axes = plt.subplots(nrows=2, ncols=len(voxels_positions), figsize=(20, 10), dpi=100)
             fig.suptitle('Visualization at time t = ' + str(t) + ' hours', fontsize=16)
+            count_under_threshold=0
             for i in range(len(voxels_positions)):
                 #show histograms for the three voxels
                 axes[0, i].set_title('Voxel ' + str(i))
@@ -210,6 +255,19 @@ class Simulator: #this class is used to run the whole simulation
                 axes[1, i].set_xlabel('Vitality')
                 axes[1, i].set_ylabel('Number of cells')
                 voxel.vitality_histogram(axes[1, i], fig)
+                axes[1, i].axvline(x=self.config.vitality_cycling_threshold, color='red', linestyle='--', linewidth=1)
+
+                vitality = []
+                for cell in voxel.list_of_cells:
+                        vitality.append(cell.vitality())
+                count_under_threshold += sum(v < self.config.vitality_cycling_threshold for v in vitality)
+                
+            print(f"Number of cells under vitality threshold < {self.config.vitality_cycling_threshold} : {count_under_threshold}")
+                #axes[1, i].text(self.config.vitality_cycling_threshold + 0.5, axes[0, i].get_ylim()[1]*0.9, f'Threshold quiescent/cycling = {self.config.vitality_cycling_threshold}', color='red', fontsize=8)
+
+
+            plt.tight_layout()
+            plt.savefig('Plots/CurrentPlotting/t' + str(t) + '_O2_Vitality.png', dpi=100)
             if self.config.running_on_cluster:
                 plt.close()
             else:
@@ -227,11 +285,567 @@ class Simulator: #this class is used to run the whole simulation
 
         end = current_time()
         print('Time elapsed for showing graphs: ' + str(end - start) + ' seconds')
+
+        if self.config.show_CT:
+            #Compute HU value for each voxel
+            world_HU=np.zeros((world.config.voxel_per_side,world.config.voxel_per_side,world.config.voxel_per_side))
+            for voxel in world.voxel_list:
+                HU=voxel.biological_to_HU(world.config.vitality_cycling_threshold)
+                #if HU>10:
+                    #print('HU value of voxel',voxel.voxel_number,'is',HU)
+                i,j,k=world.index_to_ijk(voxel.voxel_number)
+                world_HU[i,j,k]=HU
+
+            #Apply scanner PSF 
+            sigma_xy=0.5   #resolution in xy-plan in mm
+            sigma_z=0.5    #axial resolution in mm
+            
+            voxel_length = 2 * world.half_length / world.number_of_voxels
+            sigma_xy_pix=sigma_xy/voxel_length
+            sigma_z_pix=sigma_z/voxel_length
+
+            #Gaussian convolution for PSF
+            #world_HU=gaussian_filter(world_HU,sigma=[sigma_z_pix,sigma_xy_pix,sigma_xy_pix])
+
+            #Adding noise based on a gaussian distribution (could be poisson with the number of photons detected)
+            #shape=world.config.voxel_per_side,world.config.voxel_per_side,world.config.voxel_per_side
+            #world_HU+=np.random.normal(0,5,shape)   #adapt the sd
+
+            ### Show middle slices
+            fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+            plt.subplots_adjust(bottom=0.25)
+            fig.suptitle(
+                f'Interactive Visualization of CT scan and Signal Distribution\n'
+                f'Time = {self.time} h',
+                fontsize=16
+            )
+        
+            #Initial position
+            init_z = world.config.voxel_per_side // 2
+            init_y = world.config.voxel_per_side // 2
+            init_x = world.config.voxel_per_side // 2
+        
+            #Initial show
+            im_axial = axes[0, 0].imshow(world_HU[init_z, :, :], cmap=plt.cm.gray, vmin=0, vmax=140)
+            axes[0, 0].set_title(f'Axial (z={init_z})')
+            axes[0, 0].set_xlabel('X')
+            axes[0, 0].set_ylabel('Y')
+        
+            im_sagittal = axes[0, 1].imshow(world_HU[:, :, init_x], cmap=plt.cm.gray, vmin=0, vmax=140)
+            axes[0, 1].set_title(f'Sagittal (x={init_x})')
+            axes[0, 1].set_xlabel('Y')
+            axes[0, 1].set_ylabel('Z')
+        
+            im_coronal = axes[1, 0].imshow(world_HU[:, init_y, :], cmap=plt.cm.gray, vmin=0, vmax=140)
+            axes[1, 0].set_title(f'Coronal (y={init_y})')
+            axes[1, 0].set_xlabel('X')
+            axes[1, 0].set_ylabel('Z')
+        
+            ### Show histograms HU
+            axes[1, 1].hist(world_HU.flatten(), bins=50, alpha=0.7, color='skyblue')
+            axes[1, 1].set_title('HU values distribution')
+            axes[1, 1].set_xlabel('HU')
+            axes[1, 1].set_ylabel('Frequency')
+            axes[1, 1].grid(True, alpha=0.3)
+        
+            # Colorbar
+            plt.colorbar(im_axial, ax=axes[0, 0], label='HU')
+        
+            # Cursors
+            ax_z = plt.axes([0.1, 0.15, 0.2, 0.03])
+            ax_y = plt.axes([0.4, 0.15, 0.2, 0.03])
+            ax_x = plt.axes([0.7, 0.15, 0.2, 0.03])
+        
+            slider_z = Slider(ax_z, 'Z', 0, world.config.voxel_per_side-1, valinit=init_z, valstep=1)
+            slider_y = Slider(ax_y, 'Y', 0, world.config.voxel_per_side-1, valinit=init_y, valstep=1)
+            slider_x = Slider(ax_x, 'X', 0, world.config.voxel_per_side-1, valinit=init_x, valstep=1)
+        
+            # Cursors for "windowing process"
+            ax_vmin = plt.axes([0.1, 0.10, 0.2, 0.03])
+            ax_vmax = plt.axes([0.4, 0.10, 0.2, 0.03])
+        
+            slider_vmin = Slider(ax_vmin, 'Min HU', -30, 70, valinit=0, valstep=5)
+            slider_vmax = Slider(ax_vmax, 'Max HU', 0, 200, valinit=60, valstep=5)
+        
+            def update(val):
+                z = int(slider_z.val)
+                y = int(slider_y.val)
+                x = int(slider_x.val)
+                vmin = slider_vmin.val
+                vmax = slider_vmax.val
+            
+                # Update images
+                im_axial.set_array(world_HU[z, :, :])
+                im_axial.set_clim(vmin, vmax)
+                axes[0, 0].set_title(f'Axial (z={z}) - HU: {world_HU[z, y, x]:.1f}')
+            
+                im_sagittal.set_array(world_HU[:, :, x])
+                im_sagittal.set_clim(vmin, vmax)
+                axes[0, 1].set_title(f'Sagittal (x={x})')
+            
+                im_coronal.set_array(world_HU[:, y, :])
+                im_coronal.set_clim(vmin, vmax)
+                axes[1, 0].set_title(f'Coronal (y={y})')
+            
+                # Crossed cursors 
+                axes[0, 0].clear()
+                axes[0, 0].imshow(world_HU[z, :, :], cmap=plt.cm.gray, vmin=vmin, vmax=vmax)
+                axes[0, 0].axhline(y=y, color='red', linewidth=1, alpha=0.7)
+                axes[0, 0].axvline(x=x, color='red', linewidth=1, alpha=0.7)
+                axes[0, 0].set_title(f'Axial (z={z}) - HU: {world_HU[z, y, x]:.1f}')
+            
+                fig.canvas.draw_idle()
+        
+            # Event connexion
+            slider_z.on_changed(update)
+            slider_y.on_changed(update)
+            slider_x.on_changed(update)
+            slider_vmin.on_changed(update)
+            slider_vmax.on_changed(update)
+        
+            plt.show()
+
+            if self.config.export_dicom_stack:
+                time_folder = os.path.join("amber/Plots", f"t{self.time:04d}")
+                os.makedirs(time_folder, exist_ok=True)
+
+                for z in range(world.config.voxel_per_side):
+                    slice_data = ((world_HU[z, :, :] + 1024) * 1).astype(np.uint16)  #conversion in uint16 for DICOM
+
+                    # Metadata mandatory
+                    file_meta = FileMetaDataset()
+                    file_meta.MediaStorageSOPClassUID = generate_uid()
+                    file_meta.MediaStorageSOPInstanceUID = generate_uid()
+                    file_meta.ImplementationClassUID = generate_uid()
+                    file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
+
+                    # Head of dataset
+                    filename = os.path.join(time_folder, f't{self.time:04d}_slice_{z:03d}.dcm')
+                    ds = FileDataset(filename, {}, file_meta=file_meta, preamble=b"\0" * 128)
+
+                    # DICOM field
+                    ds.PatientName = "AMBER_Simulation"
+                    ds.PatientID = "123456"
+                    ds.SliceLocation = z * voxel_length
+                    ds.StudyInstanceUID = generate_uid()
+                    ds.SeriesInstanceUID = generate_uid()
+                    ds.SOPInstanceUID = file_meta.MediaStorageSOPInstanceUID
+                    ds.SOPClassUID = file_meta.MediaStorageSOPClassUID
+
+                    dt = datetime.datetime.now()
+                    ds.StudyDate = dt.strftime('%Y%m%d')
+                    ds.StudyTime = dt.strftime('%H%M%S')
+
+                    # Dimensions and pixels
+                    ds.Rows, ds.Columns = slice_data.shape
+                    ds.PixelRepresentation = 0
+                    ds.SamplesPerPixel = 1
+                    ds.PhotometricInterpretation = "MONOCHROME2"
+                    ds.BitsStored = 16
+                    ds.BitsAllocated = 16
+                    ds.HighBit = 15
+                    ds.RescaleSlope = 1
+                    ds.RescaleIntercept = -1024
+                    ds.PixelData = slice_data.tobytes()
+
+                    # Encoding
+                    ds.is_little_endian = True
+                    ds.is_implicit_VR = False
+
+                    # Backup
+                    ds.save_as(filename)
+
+                print(f"DICOM exported in {time_folder}")
+    
+        def volume_rendering_3d(self, threshold=50, opacity=0.3):
+
+            fig = plt.figure(figsize=(10, 8))
+            ax = fig.add_subplot(111, projection='3d')
+        
+            # 3D mesh
+            z, y, x = np.mgrid[0:world.number_of_voxels, 0:world.number_of_voxels, 0:world.number_of_voxels]
+        
+            # Mask for voxel higher than threshold
+            mask = world_HU > threshold
+        
+            # Scatter plot 3D
+            scatter = ax.scatter(x[mask], y[mask], z[mask], 
+                            c=world_HU[mask], 
+                            cmap=plt.cm.gray, 
+                            alpha=opacity,
+                            s=1)
+        
+            ax.set_xlabel('X (mm)')
+            ax.set_ylabel('Y (mm)')
+            ax.set_zlabel('Z (mm)')
+            ax.set_title(f'3D mesh (HU > {threshold})')
+        
+            plt.colorbar(scatter, label='HU')
+            plt.show()
+
+        if self.config.show_MRI:
+
+            world_MRI = np.zeros((world.config.voxel_per_side,) * 3)
+
+            for voxel in world.voxel_list:
+                MRI_signal = voxel.MRI_voxel_intensity(
+                    vitality_threshold=world.config.vitality_cycling_threshold,
+                    MRI_sequence=world.config.MRI_sequence,
+                    T1_base=world.config.T1_base,
+                    T2_base=world.config.T2_base,
+                    PD_base=world.config.PD_base,
+                    TE=world.config.MRI_TE,
+                    TR=world.config.MRI_TR,
+                    TI=world.config.MRI_TI
+                )
+                i, j, k = world.index_to_ijk(voxel.voxel_number)
+                world_MRI[i, j, k] = MRI_signal
+
+            #world_MRI -= world_MRI.min()
+            #if world_MRI.max() != 0:
+            #    world_MRI /= world_MRI.max()
+
+
+            # PSF
+            sigma_xy = 0.5   # resolution mm
+            sigma_z = 0.5    # resolution mm
+            voxel_length = 2 * world.half_length / world.number_of_voxels
+            sigma_xy_pix = sigma_xy / voxel_length
+            sigma_z_pix = sigma_z / voxel_length
+
+            world_MRI = gaussian_filter(world_MRI, sigma=[sigma_z_pix, sigma_xy_pix, sigma_xy_pix])
+
+            # Adding noise
+            # world_MRI += np.random.normal(0, 0.01, world_MRI.shape)
+
+            # Interactive visualization
+            fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+            plt.subplots_adjust(bottom=0.25)
+            fig.suptitle(
+                f'Interactive Visualization of MRI {world.config.MRI_sequence} and Signal Distribution\n'
+                f'TE = {world.config.MRI_TE} ms, TR = {world.config.MRI_TR} ms, time = {self.time} h',
+                fontsize=16
+            )
+
+            vmin = np.min(world_MRI)
+            vmax = np.max(world_MRI)
+
+
+            init_z = world.config.voxel_per_side // 2
+            init_y = world.config.voxel_per_side // 2
+            init_x = world.config.voxel_per_side // 2
+
+            im_axial = axes[0, 0].imshow(world_MRI[init_z, :, :], cmap=plt.cm.gray, vmin=vmin, vmax=vmax)
+            axes[0, 0].set_title(f'Axial (z={init_z})')
+            axes[0, 0].set_xlabel('X')
+            axes[0, 0].set_ylabel('Y')
+
+            im_sagittal = axes[0, 1].imshow(world_MRI[:, :, init_x], cmap=plt.cm.gray, vmin=vmin, vmax=vmax)
+            axes[0, 1].set_title(f'Sagittal (x={init_x})')
+            axes[0, 1].set_xlabel('Y')
+            axes[0, 1].set_ylabel('Z')
+
+            im_coronal = axes[1, 0].imshow(world_MRI[:, init_y, :], cmap=plt.cm.gray, vmin=vmin, vmax=vmax)
+            axes[1, 0].set_title(f'Coronal (y={init_y})')
+            axes[1, 0].set_xlabel('X')
+            axes[1, 0].set_ylabel('Z')
+
+            axes[1, 1].hist(world_MRI.flatten(), bins=50, alpha=0.7, color='gray')
+            axes[1, 1].set_title('MRI Signal distribution')
+            axes[1, 1].set_xlabel('Signal intensity')
+            axes[1, 1].set_ylabel('Frequency')
+            axes[1, 1].grid(True, alpha=0.3)
+
+            plt.colorbar(im_axial, ax=axes[0, 0], label='MRI Intensity')
+
+            ax_z = plt.axes([0.1, 0.15, 0.25, 0.03])
+            ax_y = plt.axes([0.4, 0.15, 0.25, 0.03])
+            ax_x = plt.axes([0.7, 0.15, 0.25, 0.03])
+
+            slider_z = Slider(ax_z, 'Z', 0, world.config.voxel_per_side - 1, valinit=init_z, valstep=1)
+            slider_y = Slider(ax_y, 'Y', 0, world.config.voxel_per_side - 1, valinit=init_y, valstep=1)
+            slider_x = Slider(ax_x, 'X', 0, world.config.voxel_per_side - 1, valinit=init_x, valstep=1)
+
+            def update(val):
+                z = int(slider_z.val)
+                y = int(slider_y.val)
+                x = int(slider_x.val)
+
+                im_axial.set_array(world_MRI[z, :, :])
+                axes[0, 0].set_title(f'Axial (z={z}) - Intensity: {world_MRI[z, y, x]:.2f}')
+
+                im_sagittal.set_array(world_MRI[:, :, x])
+                axes[0, 1].set_title(f'Sagittal (x={x})')
+
+                im_coronal.set_array(world_MRI[:, y, :])
+                axes[1, 0].set_title(f'Coronal (y={y})')
+
+                fig.canvas.draw_idle()
+
+            slider_z.on_changed(update)
+            slider_y.on_changed(update)
+            slider_x.on_changed(update)
+
+            plt.show()
+
+            if self.config.export_dicom_stack_MRI:
+                time_folder = os.path.join("amber/Plots", f"MRI_t{self.time:04d}")
+                os.makedirs(time_folder, exist_ok=True)
+
+                for z in range(world.config.voxel_per_side):
+                    # Normalize signal to 8-bit grayscale (0–255)
+                    slice_data = (world_MRI[z, :, :] * 255).astype(np.uint8)
+
+                    # DICOM mandatory file metadata
+                    file_meta = FileMetaDataset()
+                    file_meta.MediaStorageSOPClassUID = generate_uid()
+                    file_meta.MediaStorageSOPInstanceUID = generate_uid()
+                    file_meta.ImplementationClassUID = generate_uid()
+                    file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
+
+                    # Full path for slice DICOM file
+                    filename = os.path.join(time_folder, f'MRI_t{self.time:04d}_slice_{z:03d}.dcm')
+
+                    # Create the dataset
+                    ds = FileDataset(filename, {}, file_meta=file_meta, preamble=b"\0" * 128)
+
+                    # Basic patient/study info
+                    ds.PatientName = "AMBER_MRI_Simulation"
+                    ds.PatientID = "123456"
+                    ds.Modality = "MR"
+                    ds.SeriesDescription = f"Synthetic MRI ({world.config.MRI_sequence})"
+                    ds.ProtocolName = world.config.MRI_sequence  # Standard field to specify sequence type
+                    ds.StudyInstanceUID = generate_uid()
+                    ds.SeriesInstanceUID = generate_uid()
+                    ds.SOPInstanceUID = file_meta.MediaStorageSOPInstanceUID
+                    ds.SOPClassUID = file_meta.MediaStorageSOPClassUID
+
+                    # Position and orientation
+                    ds.SliceLocation = z * voxel_length
+                    ds.ImagePositionPatient = [0, 0, z * voxel_length]
+                    ds.ImageOrientationPatient = [1, 0, 0, 0, 1, 0]  # axial orientation
+                    ds.PixelSpacing = [voxel_length, voxel_length]
+                    ds.SliceThickness = voxel_length
+
+                    # Time/date
+                    dt = datetime.datetime.now()
+                    ds.StudyDate = dt.strftime('%Y%m%d')
+                    ds.StudyTime = dt.strftime('%H%M%S')
+
+                    # Image properties
+                    ds.Rows, ds.Columns = slice_data.shape
+                    ds.PixelRepresentation = 0  # unsigned integers
+                    ds.SamplesPerPixel = 1
+                    ds.PhotometricInterpretation = "MONOCHROME2"
+                    ds.BitsStored = 8
+                    ds.BitsAllocated = 8
+                    ds.HighBit = 7
+
+                    # Pixel data
+                    ds.PixelData = slice_data.tobytes()
+
+                    # Encoding details
+                    ds.is_little_endian = True
+                    ds.is_implicit_VR = False
+
+                    # Save DICOM file
+                    ds.save_as(filename)
+
+                print(f"MRI DICOM exported in {time_folder}")
+
+        if self.config.show_MRI_DWI:
+
+            world_DWI = np.zeros((world.config.voxel_per_side,) * 3)
+
+            for voxel in world.voxel_list:
+                DWI_signal = voxel.DWI_MRI_intensity(bvalue=world.config.bvalue, 
+                                                     bvecs=world.config.bvecs, 
+                                                     TD=world.config.TD, 
+                                                     pulsew=4, 
+                                                     Din=1, 
+                                                     Dex=world.config.Dex, 
+                                                     kappa=0.1)
+                i, j, k = world.index_to_ijk(voxel.voxel_number)
+                world_DWI[i, j, k] = DWI_signal
+
+            # PSF
+            sigma_xy = 0.5   # resolution mm
+            sigma_z = 0.5    # resolution mm
+            voxel_length = 2 * world.half_length / world.number_of_voxels
+            sigma_xy_pix = sigma_xy / voxel_length
+            sigma_z_pix = sigma_z / voxel_length
+
+            world_DWI = gaussian_filter(world_DWI, sigma=[sigma_z_pix, sigma_xy_pix, sigma_xy_pix])
+
+            # Adding noise
+            # world_MRI += np.random.normal(0, 0.01, world_DWI.shape)
+
+            # Interactive visualization
+            fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+            plt.subplots_adjust(bottom=0.25)
+            fig.suptitle(
+                f'Interactive Visualization of DWI and Signal Distribution\n'
+                f'b = {world.config.bvalue} ms/um², TD = {world.config.TD} ms, Dex = {world.config.Dex}, time = {self.time} h',
+                fontsize=16
+            )
+
+
+            #vmin = np.min(world_DWI)
+            #vmax = np.max(world_DWI)
+
+            vmin=0
+            vmax=1
+
+
+            init_z = world.config.voxel_per_side // 2
+            init_y = world.config.voxel_per_side // 2
+            init_x = world.config.voxel_per_side // 2
+
+            im_axial = axes[0, 0].imshow(world_DWI[init_z, :, :], cmap=plt.cm.gray, vmin=vmin, vmax=vmax)
+            axes[0, 0].set_title(f'Axial (z={init_z})')
+            axes[0, 0].set_xlabel('X')
+            axes[0, 0].set_ylabel('Y')
+
+            im_sagittal = axes[0, 1].imshow(world_DWI[:, :, init_x], cmap=plt.cm.gray, vmin=vmin, vmax=vmax)
+            axes[0, 1].set_title(f'Sagittal (x={init_x})')
+            axes[0, 1].set_xlabel('Y')
+            axes[0, 1].set_ylabel('Z')
+
+            im_coronal = axes[1, 0].imshow(world_DWI[:, init_y, :], cmap=plt.cm.gray, vmin=vmin, vmax=vmax)
+            axes[1, 0].set_title(f'Coronal (y={init_y})')
+            axes[1, 0].set_xlabel('X')
+            axes[1, 0].set_ylabel('Z')
+
+            # Flatten data
+            data = world_DWI.flatten()
+
+            # Histogram
+            counts, bin_edges = np.histogram(data, bins=50)
+
+            # Get rid of bin with frequence zero
+            nonzero = counts > 0
+            counts = counts[nonzero]
+
+            # Bins center and width
+            bin_lefts = bin_edges[:-1]
+            bin_rights = bin_edges[1:]
+            bin_centers = (bin_lefts + bin_rights) / 2
+            bin_centers = bin_centers[nonzero]
+            bin_widths = (bin_rights - bin_lefts)[nonzero]
+
+            # Plot
+            axes[1, 1].bar(bin_centers, counts, width=bin_widths, color='gray', alpha=0.7)
+            axes[1, 1].set_title('Diffusion MRI Signal distribution (log scale)')
+            axes[1, 1].set_xlabel('Signal intensity')
+            axes[1, 1].set_ylabel('Frequency')
+            axes[1, 1].set_yscale('log')
+            axes[1, 1].grid(True, which='both', axis='y', alpha=0.3)
+
+            plt.colorbar(im_axial, ax=axes[0, 0], label='Diffusion MRI Intensity')
+
+            ax_z = plt.axes([0.1, 0.15, 0.25, 0.03])
+            ax_y = plt.axes([0.4, 0.15, 0.25, 0.03])
+            ax_x = plt.axes([0.7, 0.15, 0.25, 0.03])
+
+            slider_z = Slider(ax_z, 'Z', 0, world.config.voxel_per_side - 1, valinit=init_z, valstep=1)
+            slider_y = Slider(ax_y, 'Y', 0, world.config.voxel_per_side - 1, valinit=init_y, valstep=1)
+            slider_x = Slider(ax_x, 'X', 0, world.config.voxel_per_side - 1, valinit=init_x, valstep=1)
+
+            def update(val):
+                z = int(slider_z.val)
+                y = int(slider_y.val)
+                x = int(slider_x.val)
+
+                im_axial.set_array(world_DWI[z, :, :])
+                axes[0, 0].set_title(f'Axial (z={z}) - Intensity: {world_DWI[z, y, x]:.2f}')
+
+                im_sagittal.set_array(world_DWI[:, :, x])
+                axes[0, 1].set_title(f'Sagittal (x={x})')
+
+                im_coronal.set_array(world_DWI[:, y, :])
+                axes[1, 0].set_title(f'Coronal (y={y})')
+
+                fig.canvas.draw_idle()
+
+            slider_z.on_changed(update)
+            slider_y.on_changed(update)
+            slider_x.on_changed(update)
+
+            plt.show()
+
+            if self.config.export_dicom_stack_DWI:
+                time_folder = os.path.join("amber/Plots", f"DWI_t{self.time:04d}")
+                os.makedirs(time_folder, exist_ok=True)
+
+                for z in range(world.config.voxel_per_side):
+                    # Normalize signal to 8-bit grayscale (0–255)
+                    slice_data = (world_DWI[z, :, :] * 255).astype(np.uint8)
+
+                    # DICOM mandatory file metadata
+                    file_meta = FileMetaDataset()
+                    file_meta.MediaStorageSOPClassUID = generate_uid()
+                    file_meta.MediaStorageSOPInstanceUID = generate_uid()
+                    file_meta.ImplementationClassUID = generate_uid()
+                    file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
+
+                    # Full path for slice DICOM file
+                    filename = os.path.join(time_folder, f'DWI_t{self.time:04d}_slice_{z:03d}.dcm')
+
+                    # Create the dataset
+                    ds = FileDataset(filename, {}, file_meta=file_meta, preamble=b"\0" * 128)
+
+                    # Basic patient/study info
+                    ds.PatientName = "AMBER_Diffusion_MRI_Simulation"
+                    ds.PatientID = "123456"
+                    ds.Modality = "MR"
+                    ds.SeriesDescription = f"Synthetic MRI (DWI)"
+                    ds.ProtocolName = "DWI"
+                    ds.StudyInstanceUID = generate_uid()
+                    ds.SeriesInstanceUID = generate_uid()
+                    ds.SOPInstanceUID = file_meta.MediaStorageSOPInstanceUID
+                    ds.SOPClassUID = file_meta.MediaStorageSOPClassUID
+
+                    # Position and orientation
+                    ds.SliceLocation = z * voxel_length
+                    ds.ImagePositionPatient = [0, 0, z * voxel_length]
+                    ds.ImageOrientationPatient = [1, 0, 0, 0, 1, 0]  # axial orientation
+                    ds.PixelSpacing = [voxel_length, voxel_length]
+                    ds.SliceThickness = voxel_length
+
+                    # Time/date
+                    dt = datetime.datetime.now()
+                    ds.StudyDate = dt.strftime('%Y%m%d')
+                    ds.StudyTime = dt.strftime('%H%M%S')
+
+                    # Image properties
+                    ds.Rows, ds.Columns = slice_data.shape
+                    ds.PixelRepresentation = 0  # unsigned integers
+                    ds.SamplesPerPixel = 1
+                    ds.PhotometricInterpretation = "MONOCHROME2"
+                    ds.BitsStored = 8
+                    ds.BitsAllocated = 8
+                    ds.HighBit = 7
+
+                    # Pixel data
+                    ds.PixelData = slice_data.tobytes()
+
+                    # Encoding details
+                    ds.is_little_endian = True
+                    ds.is_implicit_VR = False
+
+                    # Save DICOM file
+                    ds.save_as(filename)
+
+                print(f"Diffusion MRI DICOM exported in {time_folder}")
+
     def run(self, world: World, video=False): #run the simulation! (the main function)
 
         print(f'Running simulation for {self.finish_time} hours with dt={self.dt}')
         process_local = [process for process in self.list_of_process if not process.is_global] #list of local processes
         process_global = [process for process in self.list_of_process if process.is_global] #list of global processes
+        print('Number of local processes:', len(process_local))
+        print('Number of global processes:', len(process_global))
+
 
         #create an array of execution times for each process (local and global)
         execution_times = [[] for _ in range(len(self.list_of_process))] #list of execution times for each process (local and global)
@@ -272,6 +886,7 @@ class Simulator: #this class is used to run the whole simulation
                                     self.config.irradiation_intensity, world)
                 irrad(world)
                 applied_fractions += 1
+                print('Irradiation at time',current_time())
 
             print('Currently running local processes:')
             start = current_time()
@@ -335,7 +950,7 @@ class Simulator: #this class is used to run the whole simulation
 
 
             if self.config.show_center_of_mass:
-                self.show_center_of_mass(center_of_mass, times)
+                self.center_of_mass(center_of_mass, times)
 
             sum = 0
             for i, process in enumerate(self.list_of_process):
@@ -369,6 +984,7 @@ class Simulator: #this class is used to run the whole simulation
         if self.config.show_final:
             self.show(world, self.time)
 
+        print('end of running')
 
         return
 
@@ -433,12 +1049,19 @@ class CellDeath(Process): #cell necrosis process, cells die in a voxel if they h
 
     @Process.timeit
     def __call__(self, voxel):
+        dead_cell=0
+        p_nec=0
+        p_apo=0
         for cell in voxel.list_of_cells:
             sample = np.random.uniform(0, 1)
             #probability of necrosis and apoptosis. use math to get sampling every hour
             p_necro = (1 - ((1-cell.necrosis_probability(self.necrosis_probability,self.necrosis_threshold, self.necrosis_damage_coeff))**self.dt))
             p_apopt = (1 - ((1-cell.apoptosis_probability(self.apoptosis_probability, self.apoptosis_threshold, self.apoptosis_damage_coeff))**self.dt))
             if self.config.verbose: print('probability necro:', p_necro, 'probability apopto:', p_apopt)
+            if p_necro>0:
+                p_nec+=1
+            if p_apopt>0:
+                p_apo+=1
             p_tot = p_necro + p_apopt
             if p_tot > 1:
                 p_necro = p_necro/p_tot; p_apopt = p_apopt/p_tot
@@ -446,10 +1069,15 @@ class CellDeath(Process): #cell necrosis process, cells die in a voxel if they h
             if sample < p_necro:
                 #necrosis
                 voxel.cell_becomes_necrotic(cell)
+                dead_cell+=1
             elif sample < p_necro + p_apopt:
                 #apoptosis
                 voxel.cell_becomes_apoptotic(cell)
-
+                dead_cell+=1
+        #if (dead_cell>0):
+            #print('Nb of dead cells in voxel',voxel.voxel_number,'is ',dead_cell)
+        #if p_nec>0 or p_apo>0:
+            #print('Nb of proba non zero is',p_nec,'for necrosis and ',p_apo,'for apoptosis')
         for dead in voxel.list_of_dead_cells: #remove dead cells with a certain probability
             if dead.necrotic: p = self.necrosis_removal_probability
             else: p = self.apoptosis_removal_probability
@@ -501,6 +1129,10 @@ class CellMigration(Process): #cell migration process, cells migrate in the worl
         exchange_matrix = world.compute_exchange_matrix(self.dt) #compute the exchange matrix for the time step
         for voxel in world.voxel_list:
             voxel_num = voxel.voxel_number
+            #print('(0,0,0)=',world.ijk_to_index(0,0,0))
+            #print('(3,3,3)=',world.ijk_to_index(3,3,3))
+            #print('(5,5,5)=',world.ijk_to_index(5,5,5))
+            #if voxel_num==7812: print('7812=',world.index_to_ijk(voxel_num))
             if voxel_num % 10000 == 0: print('voxel number = ', voxel_num)
 
             list_of_neighbors = world.find_moor_neighbors(voxel)
@@ -519,6 +1151,7 @@ class UpdateCellOxygen(Process):
     def __init__(self, config, name, dt, voxel_half_length, file_prefix_alpha_beta_maps):
         super().__init__(config, 'UpdateState', dt)
         self.voxel_side = round(voxel_half_length*20,1) #um/100
+        print('voxel size is',self.voxel_side)
 
         #read alpha and beta maps from csv file
         first_try = str(self.voxel_side)
@@ -628,6 +1261,7 @@ class UpdateCellOxygen(Process):
 
         for i in range(n_cells):
             voxel.list_of_cells[i].oxygen = o2_values[i]
+
 class UpdateVoxelMolecules(Process): #update the molecules in the voxel (VEGF), other not implemented yet
     def __init__(self, config, name, dt):
         super().__init__(config, 'UpdateMolecules', dt)
@@ -637,8 +1271,10 @@ class UpdateVoxelMolecules(Process): #update the molecules in the voxel (VEGF), 
         for cell in voxel.list_of_cells: #sum the VEGF secreted by each cell. Oxygen and and damage play a role in the secretion
             VEGF += cell.VEGF_secretion(self.config.metabolic_damage_threshold)
         VEGF = min(VEGF, 1.0)
+        #print('New VEGF is',VEGF)
         voxel.molecular_factors['VEGF'] = VEGF
         return
+    
     def update_fiber_density(self, voxel: Voxel): #update the fiber density in the voxel
         fiber_density = 0.0
         for cell in voxel.list_of_cells:
@@ -652,6 +1288,7 @@ class UpdateVoxelMolecules(Process): #update the molecules in the voxel (VEGF), 
         self.update_VEGF(voxel) #update the VEGF concentration
         # self.update_fiber_density(voxel)
         return
+    
 class UpdateVasculature(Process): #update the vasculature
     def __init__(self, config, name, dt, killing_radius_threshold, n_capillaries_per_VVD, capillary_length, splitting_rate, macro_steps, micro_steps, weight_direction, weight_vegf, weight_pressure):
         super().__init__(config, 'UpdateVasculature', dt)
@@ -686,7 +1323,7 @@ class UpdateVasculature(Process): #update the vasculature
         # vegf.show_values(figure,ax, 'viridis', 0.0, 1.0)
         # plt.show()
 
-        def vegf_gradient(point): return vegf.gradient(point) #define the gradient of the VEGF map
+        def vegf_gradient(point): return vegf.gradient(point) #define the gradient of the map
 
         for _ in range(n_new_vessels): #create a tEC on some vessels randomly
             random_vessel = random.choice(vessels)
@@ -697,10 +1334,17 @@ class UpdateVasculature(Process): #update the vasculature
                         world.vasculature.branching(random_vessel.id, point)
 
         #grow the vessels and update the volume occupied by the vessels
-        world.vasculature_growth(self.dt, self.splitting_rate, self.macro_steps, self.micro_steps, self.weight_direction, self.weight_vegf, self.weight_pressure)
-        world.update_volume_occupied_by_vessels()
+        #world.vasculature_growth(self.dt, self.splitting_rate, self.macro_steps, self.micro_steps, self.weight_direction, self.weight_vegf, self.weight_pressure)
+        #world.update_volume_occupied_by_vessels()
         #update the capillary map
+        #world.update_capillaries(n_capillaries_per_VVD= self.n_capillaries_per_VVD, capillary_length = self.capillary_length)
+
+        world.vasculature_growth(self.dt, self.splitting_rate, self.macro_steps, self.micro_steps, self.weight_direction, self.weight_vegf, self.weight_pressure)
+
+        world.update_volume_occupied_by_vessels()
+
         world.update_capillaries(n_capillaries_per_VVD= self.n_capillaries_per_VVD, capillary_length = self.capillary_length)
+
 
 class Irradiation(Process): #irradiation
     def __init__(self, config, name, dt, topas_file, irradiation_intensity, world: World):
