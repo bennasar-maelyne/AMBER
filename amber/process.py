@@ -653,7 +653,7 @@ class Simulator: #this class is used to run the whole simulation
 
                 print(f"MRI DICOM exported in {time_folder}")
 
-        if self.config.show_MRI_DWI:
+        if self.config.show_MRI_DWI_nec:
 
             world_DWI = np.zeros((world.config.voxel_per_side,) * 3)
 
@@ -664,7 +664,7 @@ class Simulator: #this class is used to run the whole simulation
                                                      pulsew=4, 
                                                      Din=1, 
                                                      Dex=world.config.Dex, 
-                                                     kappa=0.1)
+                                                     kappa=0.03)
                 i, j, k = world.index_to_ijk(voxel.voxel_number)
                 world_DWI[i, j, k] = DWI_signal
 
@@ -837,6 +837,191 @@ class Simulator: #this class is used to run the whole simulation
                     ds.save_as(filename)
 
                 print(f"Diffusion MRI DICOM exported in {time_folder}")
+        
+        if self.config.show_MRI_DWI_nec:
+
+            world_DWI_nec = np.zeros((world.config.voxel_per_side,) * 3)
+
+            for voxel in world.voxel_list:
+                DWI_signal_nec = voxel.DWI_MRI_intensity_nec(bvalue=world.config.bvalue, 
+                                                    bvecs=world.config.bvecs, 
+                                                    TD=world.config.TD, 
+                                                    pulsew=4, 
+                                                    Din=1, 
+                                                    Dex=world.config.Dex, 
+                                                    kappa_dead=world.config.kappa_dead)
+                i, j, k = world.index_to_ijk(voxel.voxel_number)
+                world_DWI_nec[i, j, k] = DWI_signal_nec
+
+            # PSF
+            sigma_xy = 0.5   # resolution mm
+            sigma_z = 0.5    # resolution mm
+            voxel_length = 2 * world.half_length / world.number_of_voxels
+            sigma_xy_pix = sigma_xy / voxel_length
+            sigma_z_pix = sigma_z / voxel_length
+
+            world_DWI_nec = gaussian_filter(world_DWI_nec, sigma=[sigma_z_pix, sigma_xy_pix, sigma_xy_pix])
+
+            # Adding noise
+            # world_MRI += np.random.normal(0, 0.01, world_DWI.shape)
+
+            # Interactive visualization
+            fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+            plt.subplots_adjust(bottom=0.25)
+            fig.suptitle(
+                f'Interactive Visualization of DWI and Signal Distribution with necrosis\n'
+                f'b = {world.config.bvalue} ms/um², TD = {world.config.TD} ms, Dex = {world.config.Dex}, kappa_dead = {world.config.kappa_dead}, time = {self.time} h',
+                fontsize=16
+            )
+
+
+            #vmin = np.min(world_DWI)
+            #vmax = np.max(world_DWI)
+
+            vmin=0
+            vmax=1
+
+
+            init_z = world.config.voxel_per_side // 2
+            init_y = world.config.voxel_per_side // 2
+            init_x = world.config.voxel_per_side // 2
+
+            im_axial = axes[0, 0].imshow(world_DWI_nec[init_z, :, :], cmap=plt.cm.gray, vmin=vmin, vmax=vmax)
+            axes[0, 0].set_title(f'Axial (z={init_z})')
+            axes[0, 0].set_xlabel('X')
+            axes[0, 0].set_ylabel('Y')
+
+            im_sagittal = axes[0, 1].imshow(world_DWI_nec[:, :, init_x], cmap=plt.cm.gray, vmin=vmin, vmax=vmax)
+            axes[0, 1].set_title(f'Sagittal (x={init_x})')
+            axes[0, 1].set_xlabel('Y')
+            axes[0, 1].set_ylabel('Z')
+
+            im_coronal = axes[1, 0].imshow(world_DWI_nec[:, init_y, :], cmap=plt.cm.gray, vmin=vmin, vmax=vmax)
+            axes[1, 0].set_title(f'Coronal (y={init_y})')
+            axes[1, 0].set_xlabel('X')
+            axes[1, 0].set_ylabel('Z')
+
+            # Flatten data
+            data = world_DWI_nec.flatten()
+
+            # Histogram
+            counts, bin_edges = np.histogram(data, bins=50)
+
+            # Get rid of bin with frequence zero
+            nonzero = counts > 0
+            counts = counts[nonzero]
+
+            # Bins center and width
+            bin_lefts = bin_edges[:-1]
+            bin_rights = bin_edges[1:]
+            bin_centers = (bin_lefts + bin_rights) / 2
+            bin_centers = bin_centers[nonzero]
+            bin_widths = (bin_rights - bin_lefts)[nonzero]
+
+            # Plot
+            axes[1, 1].bar(bin_centers, counts, width=bin_widths, color='gray', alpha=0.7)
+            axes[1, 1].set_title('Diffusion MRI with necrosis Signal distribution (log scale)')
+            axes[1, 1].set_xlabel('Signal intensity')
+            axes[1, 1].set_ylabel('Frequency')
+            axes[1, 1].set_yscale('log')
+            axes[1, 1].grid(True, which='both', axis='y', alpha=0.3)
+
+            plt.colorbar(im_axial, ax=axes[0, 0], label='Diffusion MRI with necrosis Intensity')
+
+            ax_z = plt.axes([0.1, 0.15, 0.25, 0.03])
+            ax_y = plt.axes([0.4, 0.15, 0.25, 0.03])
+            ax_x = plt.axes([0.7, 0.15, 0.25, 0.03])
+
+            slider_z = Slider(ax_z, 'Z', 0, world.config.voxel_per_side - 1, valinit=init_z, valstep=1)
+            slider_y = Slider(ax_y, 'Y', 0, world.config.voxel_per_side - 1, valinit=init_y, valstep=1)
+            slider_x = Slider(ax_x, 'X', 0, world.config.voxel_per_side - 1, valinit=init_x, valstep=1)
+
+            def update(val):
+                z = int(slider_z.val)
+                y = int(slider_y.val)
+                x = int(slider_x.val)
+
+                im_axial.set_array(world_DWI_nec[z, :, :])
+                axes[0, 0].set_title(f'Axial (z={z}) - Intensity: {world_DWI[z, y, x]:.2f}')
+
+                im_sagittal.set_array(world_DWI_nec[:, :, x])
+                axes[0, 1].set_title(f'Sagittal (x={x})')
+
+                im_coronal.set_array(world_DWI_nec[:, y, :])
+                axes[1, 0].set_title(f'Coronal (y={y})')
+
+                fig.canvas.draw_idle()
+
+            slider_z.on_changed(update)
+            slider_y.on_changed(update)
+            slider_x.on_changed(update)
+
+            plt.show()
+
+            if self.config.export_dicom_stack_DWI_nec:
+                time_folder = os.path.join("amber/Plots", f"DWI_nec_t{self.time:04d}")
+                os.makedirs(time_folder, exist_ok=True)
+
+                for z in range(world.config.voxel_per_side):
+                    # Normalize signal to 8-bit grayscale (0–255)
+                    slice_data = (world_DWI_nec[z, :, :] * 255).astype(np.uint8)
+
+                    # DICOM mandatory file metadata
+                    file_meta = FileMetaDataset()
+                    file_meta.MediaStorageSOPClassUID = generate_uid()
+                    file_meta.MediaStorageSOPInstanceUID = generate_uid()
+                    file_meta.ImplementationClassUID = generate_uid()
+                    file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
+
+                    # Full path for slice DICOM file
+                    filename = os.path.join(time_folder, f'DWI_nec_t{self.time:04d}_slice_{z:03d}.dcm')
+
+                    # Create the dataset
+                    ds = FileDataset(filename, {}, file_meta=file_meta, preamble=b"\0" * 128)
+
+                    # Basic patient/study info
+                    ds.PatientName = "AMBER_Diffusion_MRI_Simulation_with_necrosis"
+                    ds.PatientID = "123456"
+                    ds.Modality = "MR"
+                    ds.SeriesDescription = f"Synthetic MRI (DWI) with necrosis"
+                    ds.ProtocolName = "DWI with necrosis"
+                    ds.StudyInstanceUID = generate_uid()
+                    ds.SeriesInstanceUID = generate_uid()
+                    ds.SOPInstanceUID = file_meta.MediaStorageSOPInstanceUID
+                    ds.SOPClassUID = file_meta.MediaStorageSOPClassUID
+
+                    # Position and orientation
+                    ds.SliceLocation = z * voxel_length
+                    ds.ImagePositionPatient = [0, 0, z * voxel_length]
+                    ds.ImageOrientationPatient = [1, 0, 0, 0, 1, 0]  # axial orientation
+                    ds.PixelSpacing = [voxel_length, voxel_length]
+                    ds.SliceThickness = voxel_length
+
+                    # Time/date
+                    dt = datetime.datetime.now()
+                    ds.StudyDate = dt.strftime('%Y%m%d')
+                    ds.StudyTime = dt.strftime('%H%M%S')
+
+                    # Image properties
+                    ds.Rows, ds.Columns = slice_data.shape
+                    ds.PixelRepresentation = 0  # unsigned integers
+                    ds.SamplesPerPixel = 1
+                    ds.PhotometricInterpretation = "MONOCHROME2"
+                    ds.BitsStored = 8
+                    ds.BitsAllocated = 8
+                    ds.HighBit = 7
+
+                    # Pixel data
+                    ds.PixelData = slice_data.tobytes()
+
+                    # Encoding details
+                    ds.is_little_endian = True
+                    ds.is_implicit_VR = False
+
+                    # Save DICOM file
+                    ds.save_as(filename)
+
+                print(f"Diffusion MRI with necrosis DICOM exported in {time_folder}")
 
     def run(self, world: World, video=False): #run the simulation! (the main function)
 

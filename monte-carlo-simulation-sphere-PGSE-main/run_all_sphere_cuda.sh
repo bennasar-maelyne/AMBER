@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # === Configuration ===
-CUDA_EXECUTABLE_PATH="/chemin/vers/main_PGSE_bvec_cuda"
+CUDA_EXECUTABLE_PATH="/path/to/main_PGSE_bvec_cuda"
 LOG_DIR="./logs"
 mkdir -p "$LOG_DIR"
 

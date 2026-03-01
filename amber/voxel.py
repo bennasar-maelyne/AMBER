@@ -406,6 +406,170 @@ class Voxel(object): #extra parameters are max_occupancy, viscosity
                 #print("TD_index:", TD_index, "bval_index:", bval_index, "bvec_index:", bvecs)
 
                 return signal_avg
+        
+        def DWI_MRI_intensity_nec(self, bvalue, bvecs, TD, pulsew, Din, Dex, kappa_dead):
+                if len(self.list_of_cells) == 0:
+                        return 0.5  #relative intensity of DWI in healthy tissues
+
+                # Getting AMBER outputs
+                f = self.occupied_volume_fraction()
+                if f<0.01:  #less than 10 cells (for f=0.007) in the voxel
+                        return 0.5
+                if f<0.15:
+                        f=0.15
+                print('cellular density f=',f)
+                
+                #compute f_alive
+                dead_cells=0
+                for cell in self.list_of_dead_cells:
+                        dead_cells+=1
+                f_alive=1-dead_cells/len(self.list_of_cells)
+                if f_alive>0.85:
+                        f_alive=0.85
+                print('alive cell fraction is ',f_alive)
+
+                #extract rmean and rsd
+                radius_list = []
+                N_cell=0
+                for cell in self.list_of_cells:
+                        radius_list.append(cell.radius)
+                        N_cell+=1
+                rmean = np.mean(radius_list)*1000   #radius is in µm in the look-up table
+                rsd = np.std(radius_list)*1000 + 2
+                print('mean radius is ',rmean,' and radius standard deviation ',rsd)
+
+                query_params = np.array([f, Dex, rmean, rsd, kappa_dead, f_alive]) 
+
+                # Loading the look up table for  2 populations (living and dead)
+                lut = loadmat('lookup_table_two_pop.mat')
+                params = lut['params']              
+                signals = lut['signals_4D']            
+                sequence = lut['sequence']
+
+                #If some parameters are not varying, they must be removed from the table to allow the interpolation : here kappa = 0.01
+                dim_to_remove = 4
+                params = np.delete(params, dim_to_remove, axis=1)
+                
+                #Extract b values, diffusion time, directions of gradient
+                n_bval = int(sequence['n_bval'][0][0][0][0])
+                n_bvec = int(sequence['n_bvec'][0][0][0][0])
+                n_TD = int(sequence['n_del'][0][0][0][0])
+                
+                bvals = sequence['bval'][0][0]   # shape: (n_bval,)
+                TDs = sequence['TD'][0][0] # shape: (n_del,)
+                bvecs = [int(i.strip()) for i in bvecs.split(",")]
+                TD_index = np.where(TDs == TD)[0][0]
+                if TD_index.size == 0:
+                        raise ValueError(f"TD = {TD} not found in the LUT.")
+                bval_index = np.where(bvals == bvalue)[0][0]
+                if bval_index.size == 0:
+                        raise ValueError(f"bval = {bvalue} not found in the LUT.")
+
+                #Create a triangulation is parameters space
+                tri = Delaunay(params)
+
+                #Find the simplex containing the point of interest
+                simplex_index = tri.find_simplex(query_params)
+
+                if simplex_index == -1:
+                        print(f"The point {query_params} is out of the convex hull for triangulation.")
+                        print('Minimum of the hull is ', np.min(params, axis=0), ' and maximum is ', np.max(params, axis=0))
+
+                        # Remove Dex, rmean, rsd
+                        params_3D = np.delete(params, [1, 2, 3], axis=1)
+                        query_3D = np.delete(query_params, [1, 2, 3])
+
+                        # Convex hull and visualization
+                        hull = ConvexHull(params_3D)
+                        fig = plt.figure()
+                        ax = fig.add_subplot(111, projection='3d')
+
+                        # LUT points
+                        ax.scatter(params_3D[:, 0], params_3D[:, 1], params_3D[:, 2], alpha=0.3, label='LUT points')
+
+                        # Query point
+                        ax.scatter(query_3D[0], query_3D[1], query_3D[2], c='r', label='Query point', s=50)
+
+                        # Surface plot of the convex hull
+                        faces = [params_3D[simplex] for simplex in hull.simplices]
+                        poly3d = Poly3DCollection(faces, facecolors='lightblue', linewidths=0.2, edgecolors='k', alpha=0.3)
+                        ax.add_collection3d(poly3d)
+
+                        ax.set_xlabel("f")
+                        ax.set_ylabel("kappa_dead")
+                        ax.set_zlabel("f_alive")
+                        ax.legend()
+                        plt.tight_layout()
+                        plt.show()
+
+                        # Remove rmean, rsd, kappa_dead
+                        params_3D_v2 = np.delete(params, [2, 3, 4], axis=1)
+                        query_3D_v2 = np.delete(query_params, [2, 3, 4])
+
+                        # Convex hull and visualization
+                        hull = ConvexHull(params_3D_v2)
+                        fig = plt.figure()
+                        ax = fig.add_subplot(111, projection='3d')
+
+                        # LUT points
+                        ax.scatter(params_3D_v2[:, 0], params_3D_v2[:, 1], params_3D_v2[:, 2], alpha=0.3, label='LUT points')
+
+                        # Query point
+                        ax.scatter(query_3D_v2[0], query_3D_v2[1], query_3D_v2[2], c='r', label='Query point', s=50)
+
+                        # Surface plot of the convex hull
+                        faces = [params_3D_v2[simplex] for simplex in hull.simplices]
+                        poly3d = Poly3DCollection(faces, facecolors='lightblue', linewidths=0.2, edgecolors='k', alpha=0.3)
+                        ax.add_collection3d(poly3d)
+
+                        ax.set_xlabel("f")
+                        ax.set_ylabel("Dex")
+                        ax.set_zlabel("f_alive")
+                        ax.legend()
+                        plt.tight_layout()
+                        plt.show()
+
+                        return np.nan
+
+                else:
+                        #print('Minimum of the hull is ', np.min(params, axis=0), ' and maximum is ', np.max(params, axis=0))
+                        # Get the vertices of the simplex
+                        vertex_index = tri.simplices[simplex_index]  
+                        #print(vertex_index)
+
+                        # Extract the coordinates
+                        vertices = params[vertex_index]  
+                        #print(vertices)
+
+                        # Extract barycentric coordinates
+                        T = vertices[1:] - vertices[0]  
+                        v = query_params - vertices[0]  
+                        bary_coords = np.linalg.solve(T.T, v)  
+                        bary_coords = np.append(1 - np.sum(bary_coords), bary_coords) 
+
+                        # Security
+                        if np.any(bary_coords < -1e-6):
+                                print(f"Negative barycentric coordinates => possible extrapolation")
+    
+                        # Get the signals for each vertex
+                        signals_subset = signals[vertex_index] 
+
+                        # Linear combination of the signals with the weights from the simplex
+                        interpolated_signal = np.tensordot(bary_coords, signals_subset, axes=(0, 0))  
+
+                        # Extraction of the signal for TD, bvalue and mean over the multiple bvecs
+                        signal_values = interpolated_signal[TD_index, bval_index, :]
+                        signal_values = signal_values[bvecs]
+                        signal_avg = np.mean(signal_values)/1e5
+                        #print(signal_avg)
+
+                #print(signal_avg, 'for the voxel number ', self.voxel_number)
+                #print("voxel", self.voxel_number)
+                #print("nb cells:", N_cell)
+                #print("query params:", query_params)
+                #print("TD_index:", TD_index, "bval_index:", bval_index, "bvec_index:", bvecs)
+
+                return signal_avg
 
 
 

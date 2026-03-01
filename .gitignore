@@ -1,0 +1,6 @@
+.venv/
+Figures/
+Paper/
+monte-carlo-simulation-sphere-PGSE-main/data/AMBER_maelyne/lognorm_population_RealisticTests2_V3/sphere*
+.Plots/
+.ipynb_checkpoints/

@@ -8,10 +8,10 @@ running_on_cluster: False              #don't touch, the bash script changes it 
 #Initialisation
 vessel_number: 0.6                    #initial number of vessels for healthy tissue per mm^2
 initial_number_tumor_cells: 1000         #initial total number of tumor cells
-tumor_initial_radius: 0.033 #mm
+tumor_initial_radius: 0.02 #mm
 doubling_time_tumor: 17  #hours
 doubling_time_sd: 5
-radius_tumor_cells: 0.033 #mm
+radius_tumor_cells: 0.02 #mm
 new_world: True                         #if True, create a new world, if False, load a world from a file
 world_file: double             #name of the world file to create or load
 save_world_every: 100000                  #save the world every x hours
@@ -70,12 +70,12 @@ metabolic_damage_threshold: 0.0         #threshold in damage for metabolism to b
 o2_off: False
 
 # Graphics parameters
-show_time_steps: True                  #if True, show the time during the simulation
+show_time_steps: False                 #if True, show the time during the simulation
 show_final: True                       #if True, show the final state of the simulation
 show_slices: True                      #if True, show a slice of the tumor during the simulation
 slice: x                                #what direction to slice the tumor (x or z)
 show_o2_vitality_histograms: True       #if True, show a histogram of capillaries and vitality during the simulation
-show_tumor_and_vessels_3D: True         #if True, show the vasculature in 3D during the simulation with tumor cells
+show_tumor_and_vessels_3D: False         #if True, show the vasculature in 3D during the simulation with tumor cells
 visible_original_vessels: True         #if True, show the original vasculature in 3D during the simulation
 show_alpha_beta_maps: False             #if True, show the distribution of the parameters beta and gamma
 show_cell_and_tumor_volume: False        #if True, show the volume of tumor cells and healthy cells during the simulation
@@ -84,15 +84,15 @@ show_angiogenesis_metrics: False         #if True, show the metrics for angiogen
 true_vasculature: True                   #if True, compute density manually rather than using voxel functions
 show_3D_mesh: False                     #if True, show the 3D mesh of the tumor
 show_center_of_mass: False               #if True, show the center of mass of the tumor
-show_cell_damage: True                  #if True, show the damage of the cells
+show_cell_damage: False                  #if True, show the damage of the cells
 
 ### Imaging
 # CT scan
-show_CT: True                            #if True, show CT scan
+show_CT: False                            #if True, show CT scan
 export_dicom_stack: False                  #if True, export CT scan as DICOM
 
 # MRI
-show_MRI: True                           #if True, show show_MRI
+show_MRI: False                           #if True, show show_MRI
 MRI_sequence: T1w_SE                     #can be either : "T1w_SE", "T2w_SE", "T1_IR", "PDw"
 MRI_TE: 20                               #Echoe time of the MRI (ms) should always be smaller than TR NB: (short TE and short TR) = T1-weighted and (long TE and long TR) =T2-weighted
 MRI_TR: 600                              #Repetition time of the MRI (ms)
@@ -102,13 +102,16 @@ T2_base: 70                              #Reference value of time of decay T2 (m
 PD_base: 0.68                            #Reference value of proton density rho for healthy tissue when computing PD map. Needs to be adapted to the organ
 export_dicom_stack_MRI: False             #if True, export MRI DICOM 
 
-#DWI
-show_MRI_DWI: True                       #if True, shows DWI MRI
-bvalue: 1.6                              #b-value for the DWI, depends on the values in the look-up table, can either be 0, 0.25, 0.5, 0.8, 1.2, 1.6, 2.0, 3.5 ms/µm^2
+#DWI 
+show_MRI_DWI: True                       #if True, shows DWI MRI*
+show_MRI_DWI_nec: True                   #if True, shows DWI MRI by considering necrosis
+bvalue: 1.6                              #b-value for the DWI, depends on the values in the look-up table, can either be 0, 0.25, 0.5, 0.8, 1.2, 1.6, 2.0, 3.5 ms/µm^2 and add 0.7 and 1.0 for LUT with 2 pop
 bvecs: 0, 1, 2, 3, 4, 5                  #indexes of the directions for the gradient in the following list [1 0 1; -1 0 1; 0 1 1; 0 1 -1; 1 1 0; -1 1 0]./sqrt(2)
 TD: 45                                   #diffusion time in ms, can either be 15ms, 45ms, 75ms
-Dex: 2                                 #effective extracellular diffusivity coefficient between 0.1 and 3.0 µm^2/ms 
+Dex: 2.5                                 #effective extracellular diffusivity coefficient between 0.1 and 3.0 µm^2/ms 
+kappa_dead: 0.2                          #permeability of dead cells between 0.04 and 0.3µm/ms
 export_dicom_stack_DWI: True             #if True, export the DWI DICOM
+export_dicom_stack_DWI_nec: True         #if True, export the DWI DICOM considering necrosis
 
 #Plus
 moor_neighbors: True                     #if True, allows migration of cells to edge neighbors and vertice neighbors in addition to faces neighbors

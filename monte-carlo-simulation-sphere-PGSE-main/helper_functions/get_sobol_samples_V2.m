@@ -26,8 +26,8 @@ function params = get_sobol_samples_V2(projectpath,root_helper,Dex_sample,rmean_
 %         [status_out,cmd_out]=system(cmd_in); disp(cmd_out);
         input('Press enter when finished:')
         try
-            fullfile(projectpath)
-            params = readmatrix('sobol_array.txt');
+            sobol_file = fullfile(projectpath, "sobol_array.txt");
+            params = readmatrix(sobol_file);
             disp('Sobol params successfully loaded.')
         catch
             disp('Sobol params not loaded!');
@@ -36,8 +36,8 @@ function params = get_sobol_samples_V2(projectpath,root_helper,Dex_sample,rmean_
         
     else
         disp('Sobol file found. Loading in array...')
-        fullfile(projectpath)
-        params = readmatrix('sobol_array.txt');
+        sobol_file = fullfile(projectpath, "sobol_array.txt");
+        params = readmatrix(sobol_file);
         % Params order is Dex, rmean, rsd, f
     end
 

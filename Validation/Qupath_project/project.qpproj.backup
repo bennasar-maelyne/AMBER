@@ -1,0 +1,452 @@
+{
+  "version": "0.6.0",
+  "createTimestamp": 1762255474251,
+  "modifyTimestamp": 1762255474251,
+  "uri": "file:/C:/Users/maely/OneDrive/Bureau/ENSTA/CESURE/AMBER/Validation/Qupath_project/project.qpproj",
+  "lastID": 7,
+  "images": [
+    {
+      "serverBuilder": {
+        "builderType": "uri",
+        "providerClassName": "qupath.lib.images.servers.openslide.OpenslideServerBuilder",
+        "uri": "file:/C:/Users/maely/OneDrive/Bureau/ENSTA/CESURE/AMBER/Validation/Patient_1/CON_01-H%20\u0026%20E%202.svs",
+        "args": [],
+        "metadata": {
+          "name": "CON_01-H \u0026 E 2.svs",
+          "width": 64950,
+          "height": 62983,
+          "sizeZ": 1,
+          "sizeT": 1,
+          "channelType": "DEFAULT",
+          "isRGB": true,
+          "pixelType": "UINT8",
+          "levels": [
+            {
+              "downsample": 1.0,
+              "width": 64950,
+              "height": 62983
+            },
+            {
+              "downsample": 4.0,
+              "width": 16237,
+              "height": 15745
+            },
+            {
+              "downsample": 16.0,
+              "width": 4059,
+              "height": 3936
+            },
+            {
+              "downsample": 32.0,
+              "width": 2029,
+              "height": 1968
+            }
+          ],
+          "channels": [
+            {
+              "name": "Red",
+              "color": -65536
+            },
+            {
+              "name": "Green",
+              "color": -16711936
+            },
+            {
+              "name": "Blue",
+              "color": -16776961
+            }
+          ],
+          "pixelCalibration": {
+            "pixelWidth": {
+              "value": 0.252,
+              "unit": "µm"
+            },
+            "pixelHeight": {
+              "value": 0.252,
+              "unit": "µm"
+            },
+            "zSpacing": {
+              "value": 1.0,
+              "unit": "z-slice"
+            },
+            "timeUnit": "SECONDS",
+            "timepoints": []
+          },
+          "magnification": 40.0,
+          "preferredTileWidth": 256,
+          "preferredTileHeight": 256
+        }
+      },
+      "entryID": 2,
+      "randomizedName": "426a262b-5466-4901-b394-de29ba627729",
+      "imageName": "CON_01-H \u0026 E 2.svs",
+      "metadata": {},
+      "tags": []
+    },
+    {
+      "serverBuilder": {
+        "builderType": "uri",
+        "providerClassName": "qupath.lib.images.servers.openslide.OpenslideServerBuilder",
+        "uri": "file:/C:/Users/maely/OneDrive/Bureau/ENSTA/CESURE/AMBER/Validation/Patient_1/CON_01-IDH1.svs",
+        "args": [],
+        "metadata": {
+          "name": "CON_01-IDH1.svs",
+          "width": 15745,
+          "height": 36677,
+          "sizeZ": 1,
+          "sizeT": 1,
+          "channelType": "DEFAULT",
+          "isRGB": true,
+          "pixelType": "UINT8",
+          "levels": [
+            {
+              "downsample": 1.0,
+              "width": 15745,
+              "height": 36677
+            },
+            {
+              "downsample": 4.0,
+              "width": 3936,
+              "height": 9169
+            },
+            {
+              "downsample": 16.0,
+              "width": 984,
+              "height": 2292
+            }
+          ],
+          "channels": [
+            {
+              "name": "Red",
+              "color": -65536
+            },
+            {
+              "name": "Green",
+              "color": -16711936
+            },
+            {
+              "name": "Blue",
+              "color": -16776961
+            }
+          ],
+          "pixelCalibration": {
+            "pixelWidth": {
+              "value": 0.252,
+              "unit": "µm"
+            },
+            "pixelHeight": {
+              "value": 0.252,
+              "unit": "µm"
+            },
+            "zSpacing": {
+              "value": 1.0,
+              "unit": "z-slice"
+            },
+            "timeUnit": "SECONDS",
+            "timepoints": []
+          },
+          "magnification": 40.0,
+          "preferredTileWidth": 256,
+          "preferredTileHeight": 256
+        }
+      },
+      "entryID": 3,
+      "randomizedName": "667f68bf-894f-4f3d-bbea-a063f21c3855",
+      "imageName": "CON_01-IDH1.svs",
+      "metadata": {},
+      "tags": []
+    },
+    {
+      "serverBuilder": {
+        "builderType": "uri",
+        "providerClassName": "qupath.lib.images.servers.openslide.OpenslideServerBuilder",
+        "uri": "file:/C:/Users/maely/OneDrive/Bureau/ENSTA/CESURE/AMBER/Validation/Patient_1/CON_01-H%20\u0026%20E%201.svs",
+        "args": [],
+        "metadata": {
+          "name": "CON_01-H \u0026 E 1.svs",
+          "width": 31491,
+          "height": 29270,
+          "sizeZ": 1,
+          "sizeT": 1,
+          "channelType": "DEFAULT",
+          "isRGB": true,
+          "pixelType": "UINT8",
+          "levels": [
+            {
+              "downsample": 1.0,
+              "width": 31491,
+              "height": 29270
+            },
+            {
+              "downsample": 4.0,
+              "width": 7872,
+              "height": 7317
+            },
+            {
+              "downsample": 16.0,
+              "width": 1968,
+              "height": 1829
+            }
+          ],
+          "channels": [
+            {
+              "name": "Red",
+              "color": -65536
+            },
+            {
+              "name": "Green",
+              "color": -16711936
+            },
+            {
+              "name": "Blue",
+              "color": -16776961
+            }
+          ],
+          "pixelCalibration": {
+            "pixelWidth": {
+              "value": 0.252,
+              "unit": "µm"
+            },
+            "pixelHeight": {
+              "value": 0.252,
+              "unit": "µm"
+            },
+            "zSpacing": {
+              "value": 1.0,
+              "unit": "z-slice"
+            },
+            "timeUnit": "SECONDS",
+            "timepoints": []
+          },
+          "magnification": 40.0,
+          "preferredTileWidth": 256,
+          "preferredTileHeight": 256
+        }
+      },
+      "entryID": 4,
+      "randomizedName": "8efc6795-b330-443e-8011-cd79c5ad239f",
+      "imageName": "CON_01-H \u0026 E 1.svs",
+      "metadata": {},
+      "tags": []
+    },
+    {
+      "serverBuilder": {
+        "builderType": "uri",
+        "providerClassName": "qupath.lib.images.servers.openslide.OpenslideServerBuilder",
+        "uri": "file:/C:/Users/maely/OneDrive/Bureau/ENSTA/CESURE/AMBER/Validation/Patient_3/CON_03-%20H%20\u0026%20E%201.svs",
+        "args": [],
+        "metadata": {
+          "name": "CON_03- H \u0026 E 1.svs",
+          "width": 21650,
+          "height": 26716,
+          "sizeZ": 1,
+          "sizeT": 1,
+          "channelType": "DEFAULT",
+          "isRGB": true,
+          "pixelType": "UINT8",
+          "levels": [
+            {
+              "downsample": 1.0,
+              "width": 21650,
+              "height": 26716
+            },
+            {
+              "downsample": 4.0,
+              "width": 5412,
+              "height": 6679
+            },
+            {
+              "downsample": 16.0,
+              "width": 1353,
+              "height": 1669
+            }
+          ],
+          "channels": [
+            {
+              "name": "Red",
+              "color": -65536
+            },
+            {
+              "name": "Green",
+              "color": -16711936
+            },
+            {
+              "name": "Blue",
+              "color": -16776961
+            }
+          ],
+          "pixelCalibration": {
+            "pixelWidth": {
+              "value": 0.252,
+              "unit": "µm"
+            },
+            "pixelHeight": {
+              "value": 0.252,
+              "unit": "µm"
+            },
+            "zSpacing": {
+              "value": 1.0,
+              "unit": "z-slice"
+            },
+            "timeUnit": "SECONDS",
+            "timepoints": []
+          },
+          "magnification": 40.0,
+          "preferredTileWidth": 256,
+          "preferredTileHeight": 256
+        }
+      },
+      "entryID": 5,
+      "randomizedName": "4229598b-8a66-4f56-87f4-70a5b8559126",
+      "imageName": "CON_03- H \u0026 E 1.svs",
+      "metadata": {},
+      "tags": []
+    },
+    {
+      "serverBuilder": {
+        "builderType": "uri",
+        "providerClassName": "qupath.lib.images.servers.openslide.OpenslideServerBuilder",
+        "uri": "file:/C:/Users/maely/OneDrive/Bureau/ENSTA/CESURE/AMBER/Validation/Patient_3/CON_03-IDH1.svs",
+        "args": [],
+        "metadata": {
+          "name": "CON_03-IDH1.svs",
+          "width": 23618,
+          "height": 30036,
+          "sizeZ": 1,
+          "sizeT": 1,
+          "channelType": "DEFAULT",
+          "isRGB": true,
+          "pixelType": "UINT8",
+          "levels": [
+            {
+              "downsample": 1.0,
+              "width": 23618,
+              "height": 30036
+            },
+            {
+              "downsample": 4.0,
+              "width": 5904,
+              "height": 7509
+            },
+            {
+              "downsample": 16.0,
+              "width": 1476,
+              "height": 1877
+            }
+          ],
+          "channels": [
+            {
+              "name": "Red",
+              "color": -65536
+            },
+            {
+              "name": "Green",
+              "color": -16711936
+            },
+            {
+              "name": "Blue",
+              "color": -16776961
+            }
+          ],
+          "pixelCalibration": {
+            "pixelWidth": {
+              "value": 0.252,
+              "unit": "µm"
+            },
+            "pixelHeight": {
+              "value": 0.252,
+              "unit": "µm"
+            },
+            "zSpacing": {
+              "value": 1.0,
+              "unit": "z-slice"
+            },
+            "timeUnit": "SECONDS",
+            "timepoints": []
+          },
+          "magnification": 40.0,
+          "preferredTileWidth": 256,
+          "preferredTileHeight": 256
+        }
+      },
+      "entryID": 6,
+      "randomizedName": "ff3f3a06-bf9b-483f-8855-4af7bb1546c7",
+      "imageName": "CON_03-IDH1.svs",
+      "metadata": {},
+      "tags": []
+    },
+    {
+      "serverBuilder": {
+        "builderType": "uri",
+        "providerClassName": "qupath.lib.images.servers.openslide.OpenslideServerBuilder",
+        "uri": "file:/C:/Users/maely/OneDrive/Bureau/ENSTA/CESURE/AMBER/Validation/Patient_3/CON_03-K167.svs",
+        "args": [],
+        "metadata": {
+          "name": "CON_03-K167.svs",
+          "width": 21650,
+          "height": 20076,
+          "sizeZ": 1,
+          "sizeT": 1,
+          "channelType": "DEFAULT",
+          "isRGB": true,
+          "pixelType": "UINT8",
+          "levels": [
+            {
+              "downsample": 1.0,
+              "width": 21650,
+              "height": 20076
+            },
+            {
+              "downsample": 4.0,
+              "width": 5412,
+              "height": 5019
+            },
+            {
+              "downsample": 8.0,
+              "width": 2706,
+              "height": 2509
+            }
+          ],
+          "channels": [
+            {
+              "name": "Red",
+              "color": -65536
+            },
+            {
+              "name": "Green",
+              "color": -16711936
+            },
+            {
+              "name": "Blue",
+              "color": -16776961
+            }
+          ],
+          "pixelCalibration": {
+            "pixelWidth": {
+              "value": 0.252,
+              "unit": "µm"
+            },
+            "pixelHeight": {
+              "value": 0.252,
+              "unit": "µm"
+            },
+            "zSpacing": {
+              "value": 1.0,
+              "unit": "z-slice"
+            },
+            "timeUnit": "SECONDS",
+            "timepoints": []
+          },
+          "magnification": 40.0,
+          "preferredTileWidth": 256,
+          "preferredTileHeight": 256
+        }
+      },
+      "entryID": 7,
+      "randomizedName": "a08673ae-6e9e-47ef-b810-09dbec496700",
+      "imageName": "CON_03-K167.svs",
+      "metadata": {},
+      "tags": []
+    }
+  ]
+}

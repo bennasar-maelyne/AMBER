@@ -16,7 +16,7 @@ function [rinit,outputparams] = create_cell_distribution(cells,Nspheres)
     doplot = cells.doplot;
     %disp(doplot)
 
-    Npop = 2;
+    Npop = 1;
     Neachpop = round(Nspheres * population_perc);
     if sum(Neachpop)~= Nspheres
         [largerval,largerindx] = max(Neachpop);
