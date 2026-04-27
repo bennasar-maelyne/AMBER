@@ -1,6 +1,48 @@
+# Environnement Python
 .venv/
+
+# Figures et Paper (non versionnés)
 Figures/
 Paper/
-monte-carlo-simulation-sphere-PGSE-main/data/AMBER_maelyne/lognorm_population_RealisticTests2_V3/sphere*
-.Plots/
+
+# Checkpoints Jupyter
 .ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# Cache Python
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Logs
+*.log
+
+# Données médicales — NE PAS versionner (confidentialité patients)
+*.svs
+*.nii
+*.nii.gz
+*.qpdata
+
+# Fichiers MATLAB / LUT (trop lourds)
+*.mat
+
+# Archives
+*.zip
+
+# Données patients
+Validation/Patient_1/
+Validation/Patient_2/
+Validation/Patient_3/
+Validation/Qupath_project/
+
+# Sphères Monte Carlo (simulation data)
+monte-carlo-simulation-sphere-PGSE-main/data/AMBER_maelyne/lognorm_population_RealisticTests2_V3/sphere*
+monte-carlo-simulation-sphere-PGSE-main/data/AMBER_maelyne/lognorm_population_RealisticTests2_V3/results.zip
+
+# Dossiers plots générés
+.Plots/
+amber/Plots/
+
+# Fichiers temporaires / poubelle
+Validation/garbage*
+Validation/*_old.json
