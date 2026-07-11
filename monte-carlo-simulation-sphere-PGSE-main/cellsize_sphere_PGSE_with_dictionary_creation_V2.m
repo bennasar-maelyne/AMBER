@@ -8,10 +8,10 @@ root = fullfile(root0,'data');
 root_code = fullfile(root0,'lib','packing');
 root_helper = fullfile(root0,'CellSize','helper_functions');
 addpath 'C:/Users/maely/OneDrive/Bureau/ENSTA/CESURE/AMBER/monte-carlo-simulation-sphere-PGSE-main'
-#addpath '/Users/hp024/Documents/maelyne/MRI/Diffusion/monte-carlo-simulation-sphere-PGSE-main/data/AMBER_maelyne/lognorm_population_RealisticTests2_V3/sphere_0001'
+%addpath '/Users/hp024/Documents/maelyne/MRI/Diffusion/monte-carlo-simulation-sphere-PGSE-main/data/AMBER_maelyne/lognorm_population_RealisticTests2_V3/sphere_0001'
 addpath 'C:/Users/maely/OneDrive/Bureau/ENSTA/CESURE/AMBER/monte-carlo-simulation-sphere-PGSE-main/data/AMBER-main/lognorm_population_RealisticTests2_V3'
 addpath 'C:/Users/maely/OneDrive/Bureau/ENSTA/CESURE/AMBER/monte-carlo-simulation-sphere-PGSE-main/helper_functions'
-projname = 'AMBER-main';
+projname = 'AMBER-optim';
 
 
 %%%%%%%%%%%%%%%%%%%%%% Building the correct path %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -30,9 +30,9 @@ sobol_path = fullfile(projectpath,'sobol_params.txt');
 %%%%%%% Define parameters or generate Sobol sampled parameter combinations %%%%%
 
 % Define range for Sobol distribution parameters
- Dex_sample.lb = 0;   %extracellular diffusivity
- Dex_sample.ub = 3;
- rmean_sample.lb = 0;  %radius mean
+ Dex_sample.lb = 0.5; %extracellular diffusivity (0.5 = fibrosis lower bound)
+ Dex_sample.ub = 3.0;
+ rmean_sample.lb = 1;  %radius mean
  rmean_sample.ub = 20;
  rsd_sample.lb = 0;  %radius std
  rsd_sample.ub = 4;
@@ -46,17 +46,32 @@ sobol_path = fullfile(projectpath,'sobol_params.txt');
  elapsed_time = toc;
  disp(['Sobol distribution generated in ', num2str(elapsed_time, '%.2f'), ' secondes for ', num2str(Ncombos), ' combos.'])
  % [Dex, rmean, rsd, f]
+ % Extra points to reinforce convex hull edges
+ % Previous (AMBER-main): Dex [0,3], rmean [0,20]
+ % extra_points = [
+ %    1.0,    5,  0,   0.6;   % extreme low
+ %    3.5,   40, 10,   0.8;   % extreme high
+ %    2.0,   30,  0,   0.7;   % low rsd
+ %    1.0,   40, 10,   0.8;   % low Dex
+ %    2.5,   30,  8,   0.2;   % edge values
+ %    3.5,   40,  0,   0.8;   % 2nd attempt convex hull
+ %    3.5,   40,  0,   0.001; % 3rd attempt convex hull
+ %    3.5,   40, 10,   0.001; % 3rd attempt convex hull
+ %    1.0,    5,  0,   0.001; % everything low
+ %    1.0,   40, 10,   0.001
+ %    ];
+ % Updated (AMBER-optim): Dex [0.5,3], rmean [1,20]
  extra_points = [
-    1.0,    5,  0,   0.6;   % extreme low
-    3.5,   40, 10,   0.8;   % extreme high
-    2.0,   30,  0,   0.7;   % low rsd
-    1.0,   40, 10,   0.8;   % low Dex
-    2.5,   30,  8,   0.2;   % edge values
-    3.5,   40,  0,   0.8;   % 2nd attempt convex hull
-    3.5,   40,  0,   0.001; % 3rd attempt convex hull
-    3.5,   40, 10,   0.001; % 3rd attempt convex hull
-    1.0,    5,  0,   0.001; % everything low
-    1.0,   40, 10,   0.001
+    0.5,    4,  0,   0.6;   % low Dex corner
+    3.0,   20,  4,   0.8;   % high corner
+    1.5,   20,  0,   0.7;   % large cells, low rsd
+    0.5,   20,  4,   0.8;   % low Dex + large cells
+    2.0,   10,  3,   0.2;   % mid values
+    3.0,   20,  0,   0.8;   % high Dex, large cells
+    3.0,   20,  0,   0.001; % high Dex, near-zero f (cyst)
+    3.0,   20,  4,   0.001; % high Dex + rsd, near-zero f
+    0.5,    2,  0,   0.001; % low Dex, small cells, near-zero f (cyst-like)
+    0.5,   20,  4,   0.001  % low Dex, large cells, near-zero f
     ];
  params = [params; extra_points];
 
@@ -82,12 +97,12 @@ Dex =   params(1:Ncombos,1);
 rmean = params(1:Ncombos,2);
 rsd =   params(1:Ncombos,3);
 f   =   params(1:Ncombos,4);
-Delta = ones(Ncombos,1)*[15 45 75];
+Delta = ones(Ncombos,1)*[20 30 45 60 80]; % 5 TDs for optimization (ms)
 
 % Assign fixed params:
 
 % Sequence params
-pulse_width = 4; % pulse width, ms
+pulse_width = 10; % pulse width, ms (clinically representative for 3T PGSE)
 
 %Option 1
 % bval = [0,0.25,0.5,0.8,1.2,1.6,2.0,2.5,3.0,4.0];
@@ -98,7 +113,7 @@ pulse_width = 4; % pulse width, ms
 
 % Option 3
 %bval=[0, 0.5, 1.0, 2.0];
-bval = [0, 0.25, 0.5, 0.7, 0.8, 1.0, 1.2, 1.6, 2.0, 3.5];
+bval = [0, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5]; % 11 b-values for optimization (ms/um^2)
 %bvec = [1 0 0; 0 1 0; 0 0 1];
 bvec = [1 0 1; -1 0 1; 0 1 1; 0 1 -1; 1 1 0; -1 1 0]./sqrt(2);  % gradient directions in x y and z
 
@@ -125,7 +140,7 @@ for ii = 1:Ncombos
     ri = rmean(ii);
     ri_sd = rsd(ii);
     fi = f(ii);
-    %kappai = kappa(1); % could be varied
+    kappai = kappa(1); % permeability for single-population model (alive cells)
     TD = Delta(ii,:); %6:10:3006; %306; %6:120 % diffusion time, ms
 
     TN = ceil((max(TD)+min(TD))/dt); % # steps

@@ -516,6 +516,68 @@ def get_signal_curve_lut(f, Dex, rmean, rsd, TD, tri, signals_lookup, params_lut
             signals = np.mean(signals_lookup[nearest_v_idx][TD_index, :, :], axis=-1)
     return bvals_lut, signals
 
+
+def _ci_bounds_interp(grid, profile, best_value, delta, warn_label=None):
+    """
+    CI bounds where the chi²/NLL profile crosses best_value + delta, refined
+    by linear interpolation between the two grid points bracketing each
+    crossing (rather than snapping to the nearest grid point).
+
+    Without this, a CI is reported as a single grid point whenever the
+    profile is steep enough that already the first neighbouring point
+    exceeds the threshold — an artifact of grid resolution, not a real
+    zero-width interval. Interpolating recovers the true sub-grid crossing.
+
+    If a crossing falls outside the grid (CI touches the edge), the bound
+    is clamped to the grid edge and a warning is printed, since that means
+    the grid does not fully bracket the CI and should be widened.
+
+    Parameters
+    ----------
+    grid        : 1-D array of parameter candidates, ascending
+    profile     : chi²/NLL values at each grid point (same shape as grid)
+    best_value  : chi²/NLL at the minimum (profile.min())
+    delta       : threshold offset (e.g. Δχ²=1 for 68%, 3.84 for 1-param 95%)
+    warn_label  : optional string included in the edge-touching warning
+
+    Returns
+    -------
+    (ci_low, ci_high) : tuple of floats
+    """
+    grid    = np.asarray(grid)
+    profile = np.asarray(profile)
+    threshold = best_value + delta
+    best_idx  = int(np.nanargmin(profile))
+
+    below = profile <= threshold
+    if not np.any(below):
+        return float(grid[best_idx]), float(grid[best_idx])
+
+    idx_in = np.where(below)[0]
+    i_lo, i_hi = int(idx_in[0]), int(idx_in[-1])
+
+    if i_lo > 0 and np.isfinite(profile[i_lo - 1]):
+        x0, x1 = grid[i_lo - 1], grid[i_lo]
+        y0, y1 = profile[i_lo - 1], profile[i_lo]
+        ci_low = x0 + (threshold - y0) * (x1 - x0) / (y1 - y0) if y1 != y0 else x1
+    else:
+        ci_low = float(grid[i_lo])
+        tag = f" ({warn_label})" if warn_label else ""
+        print(f"  [warn] CI lower bound touches grid edge {grid[0]:.3f}{tag} "
+              f"— widen the grid.")
+
+    if i_hi < len(grid) - 1 and np.isfinite(profile[i_hi + 1]):
+        x0, x1 = grid[i_hi], grid[i_hi + 1]
+        y0, y1 = profile[i_hi], profile[i_hi + 1]
+        ci_high = x0 + (threshold - y0) * (x1 - x0) / (y1 - y0) if y1 != y0 else x0
+    else:
+        ci_high = float(grid[i_hi])
+        tag = f" ({warn_label})" if warn_label else ""
+        print(f"  [warn] CI upper bound touches grid edge {grid[-1]:.3f}{tag} "
+              f"— widen the grid.")
+
+    return float(ci_low), float(ci_high)
+
 def infer_dex_chi2(df_dwi, cell_areas, max_calipers, min_calipers, roi_area_um2,
                    Dex_grid, TD, tri, signals_lut, params_lut,
                    slice_width_um=4, bval_max_um2=7.5):
@@ -607,9 +669,8 @@ def infer_dex_chi2(df_dwi, cell_areas, max_calipers, min_calipers, roi_area_um2,
     chi2_min  = chi2_vals[best_idx]
     Dex_best  = Dex_grid[best_idx]
 
-    within_ci   = Dex_grid[chi2_vals <= chi2_min + 1.0]
-    Dex_ci_low  = float(within_ci[0])  if len(within_ci) else float(Dex_best)
-    Dex_ci_high = float(within_ci[-1]) if len(within_ci) else float(Dex_best)
+    Dex_ci_low, Dex_ci_high = _ci_bounds_interp(
+        Dex_grid, chi2_vals, chi2_min, 1.0, warn_label=f"infer_dex_chi2 TD={TD}")
 
     return {
         "Dex_best":    float(Dex_best),
@@ -721,7 +782,7 @@ print("df_p3:", df_p3.shape, "| TDs:", df_p3['TD'].unique())
 # ── Run Dex inference on one ROI ────────────────────────────────────────────
 
 tri      = Delaunay(params_lut)
-Dex_grid = np.linspace(1.0, 3.5, 300)
+Dex_grid = np.linspace(1.0, 3.0, 400)  # LUT support is [1, 3] µm²/ms
 
 # Parameters to change as needed
 pat_id   = 3
@@ -801,7 +862,7 @@ def infer_Dex_shrinkage_chi2(df_dwi, cell_areas, max_calipers, min_calipers,
     TD              : diffusion time in ms (19 or 49)
     slice_width_um  : slice thickness (µm, default 4)
     bval_max_um2    : max b-value used (ms/µm², default 7.5)
-    Dex_grid        : Dex candidates (µm²/ms), default linspace(0.5, 3.5, 60)
+    Dex_grid        : Dex candidates (µm²/ms), default linspace(1.0, 3.0, 400)
     k_det_grid      : k_det candidates, default linspace(0.05, 1.0, 40)
     k_r             : fixed geometric shrinkage factor, default 0.75
     use_rician      : if True, minimise Rician negative log-likelihood instead
@@ -821,7 +882,7 @@ def infer_Dex_shrinkage_chi2(df_dwi, cell_areas, max_calipers, min_calipers,
     from scipy.special import i0e as bessel_i0e
 
     if Dex_grid is None:
-        Dex_grid = np.linspace(0.5, 3.5, 60)
+        Dex_grid = np.linspace(1.0, 3.0, 400)  # LUT support is [1, 3] µm²/ms
     if k_det_grid is None:
         k_det_grid = np.linspace(0.05, 1.0, 40)
 
@@ -920,15 +981,19 @@ def infer_Dex_shrinkage_chi2(df_dwi, cell_areas, max_calipers, min_calipers,
     # (LR statistic -2·ΔNLL ~ χ²(2) → same 95% percentile)
     chi2_threshold = chi2_dist.ppf(0.95, df=2)          # ≈ 5.99
     delta = chi2_threshold / 2 if use_rician else chi2_threshold
-    ci_mask = loss_map < (loss_min + delta)
 
     # For backwards compatibility keep chi2_map as an alias
     chi2_map = loss_map
 
-    k_det_in = k_det_grid[np.any(ci_mask, axis=1)]
-    Dex_in   = Dex_grid[np.any(ci_mask, axis=0)]
-    k_det_ci = (float(k_det_in.min()), float(k_det_in.max())) if len(k_det_in) else (k_det_best, k_det_best)
-    Dex_ci   = (float(Dex_in.min()),   float(Dex_in.max()))   if len(Dex_in)   else (Dex_best,   Dex_best)
+    # Marginal profiles (min over the other axis), used both for the CI and
+    # for the marginal-profile plot below.
+    loss_dex   = np.nanmin(loss_map, axis=0)
+    loss_k_det = np.nanmin(loss_map, axis=1)
+
+    Dex_ci   = _ci_bounds_interp(Dex_grid, loss_dex, loss_min, delta,
+                                  warn_label="infer_Dex_shrinkage_chi2 Dex")
+    k_det_ci = _ci_bounds_interp(k_det_grid, loss_k_det, loss_min, delta,
+                                  warn_label="infer_Dex_shrinkage_chi2 k_det")
 
     # --- 6. Visualisation ---
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
@@ -946,8 +1011,6 @@ def infer_Dex_shrinkage_chi2(df_dwi, cell_areas, max_calipers, min_calipers,
     ax.legend(fontsize=8)
 
     ax = axes[1]
-    loss_dex   = np.nanmin(loss_map, axis=0)
-    loss_k_det = np.nanmin(loss_map, axis=1)
     ax.plot(Dex_grid,   loss_dex   - loss_min, color='tab:blue',   lw=2, label='Dex profile (min over k_det)')
     ax2 = ax.twinx()
     ax2.plot(k_det_grid, loss_k_det - loss_min, color='tab:orange', lw=2, label='k_det profile (min over Dex)')
@@ -1007,7 +1070,8 @@ def infer_Dex_shrinkage_chi2(df_dwi, cell_areas, max_calipers, min_calipers,
 def infer_joint_kdet(df_dwi, cell_areas, max_calipers, min_calipers,
                      roi_area_um2, tri, signals_lut, params_lut,
                      slice_width_um=4, bval_max_um2=7.5,
-                     Dex_grid=None, k_det_grid=None, k_r=1.0):
+                     Dex_grid=None, k_det_grid=None, k_r=1.0,
+                     save_dir=None, fig_label=None):
     """
     Joint inference of (k_det, Dex_19, Dex_49) with a SHARED k_det.
 
@@ -1040,7 +1104,7 @@ def infer_joint_kdet(df_dwi, cell_areas, max_calipers, min_calipers,
     params_lut     : LUT parameter array
     slice_width_um : slice thickness (µm, default 4)
     bval_max_um2   : max b-value used (ms/µm², default 7.5)
-    Dex_grid       : Dex candidates (µm²/ms), default linspace(0.5, 3.5, 80)
+    Dex_grid       : Dex candidates (µm²/ms), default linspace(1.0, 3.0, 400)
     k_det_grid     : k_det candidates, default linspace(0.05, 1.0, 50)
     k_r            : fixed geometric shrinkage factor, default 1.0
 
@@ -1057,7 +1121,7 @@ def infer_joint_kdet(df_dwi, cell_areas, max_calipers, min_calipers,
     from scipy.stats import chi2 as chi2_dist
 
     if Dex_grid is None:
-        Dex_grid = np.linspace(0.5, 3.5, 80)
+        Dex_grid = np.linspace(1.0, 3.0, 400)  # LUT support is [1, 3] µm²/ms
     if k_det_grid is None:
         k_det_grid = np.linspace(0.05, 1.0, 50)
 
@@ -1153,66 +1217,82 @@ def infer_joint_kdet(df_dwi, cell_areas, max_calipers, min_calipers,
 
     # Marginal k_det CI: project 3D CI onto k_det axis
     # total_per_k is the minimum total loss at each k_det
-    k_in = k_det_grid[total_per_k < chi2_total + delta_3]
-    k_det_ci = ((float(k_in.min()), float(k_in.max()))
-                if len(k_in) else (k_det_best, k_det_best))
+    k_det_ci = _ci_bounds_interp(k_det_grid, total_per_k, chi2_total, delta_3,
+                                  warn_label=f"{fig_label or ''} k_det")
 
-    # Marginal Dex_19 CI at best k_det
-    d19_in = Dex_grid[chi2_map_19[i_best] < chi2_19_min + delta_3]
-    Dex_19_ci = ((float(d19_in.min()), float(d19_in.max()))
-                 if len(d19_in) else (Dex_19_best, Dex_19_best))
+    # Marginal Dex_19 / Dex_49 CI at best k_det
+    Dex_19_ci = _ci_bounds_interp(Dex_grid, chi2_map_19[i_best], chi2_19_min, delta_3,
+                                   warn_label=f"{fig_label or ''} Dex_19")
+    Dex_49_ci = _ci_bounds_interp(Dex_grid, chi2_map_49[i_best], chi2_49_min, delta_3,
+                                   warn_label=f"{fig_label or ''} Dex_49")
 
-    # Marginal Dex_49 CI at best k_det
-    d49_in = Dex_grid[chi2_map_49[i_best] < chi2_49_min + delta_3]
-    Dex_49_ci = ((float(d49_in.min()), float(d49_in.max()))
-                 if len(d49_in) else (Dex_49_best, Dex_49_best))
+    # --- 6. Visualisation (publication style) ---
+    _pub_rc = {"font.family": "serif", "font.size": 11, "axes.linewidth": 0.8}
+    with plt.rc_context(_pub_rc):
+        fig, axes = plt.subplots(1, 3, figsize=(13, 4.2))
 
-    # --- 6. Visualisation ---
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+        _ci_kw  = dict(color="#d62728", ls="--", lw=1.2, alpha=0.8)
+        _best_kw = dict(color="#d62728", ls=":",  lw=1.5)
 
-    ax = axes[0]
-    ax.plot(k_det_grid, total_per_k - chi2_total, color='navy', lw=2)
-    ax.axhline(delta_3, color='red', ls='--', lw=1.5,
-               label=f'95% CI threshold = {delta_3:.2f}')
-    ax.axvline(k_det_best, color='red', lw=1.5, ls=':',
-               label=f'k_det_best = {k_det_best:.3f}')
-    ax.set_xlabel('k_det (shared)')
-    ax.set_ylabel('Δχ²_total (min over both Dex)')
-    ax.set_title('k_det marginal profile')
-    ax.legend(fontsize=8)
-    ax.grid(True, alpha=0.3)
+        ax = axes[0]
+        ax.plot(k_det_grid, total_per_k - chi2_total, color="#2166ac", lw=1.8)
+        ax.axhline(delta_3, label=f"95% CI threshold = {delta_3:.2f}", **_ci_kw)
+        ax.axvline(k_det_best, **_best_kw,
+                   label=f"$k_{{det}}$ = {k_det_best:.3f}")
+        ax.set_xlabel("$k_{det}$")
+        ax.set_ylabel("$\\Delta\\chi^2_{total}$")
+        ax.legend(fontsize=8.5, frameon=False)
+        ax.grid(True, alpha=0.2, lw=0.6)
+        for sp in ("top", "right"): ax.spines[sp].set_visible(False)
+        ax.text(0.03, 0.97, "(A)", transform=ax.transAxes,
+                va="top", ha="left", fontsize=11, fontweight="bold")
 
-    ax = axes[1]
-    ax.plot(Dex_grid, chi2_map_19[i_best] - chi2_19_min, color='tab:blue', lw=2)
-    ax.axhline(delta_3, color='red', ls='--', lw=1.5)
-    ax.axvline(Dex_19_best, color='red', lw=1.5, ls=':',
-               label=f'Dex_19 = {Dex_19_best:.3f}')
-    ax.set_xlabel('Dex (µm²/ms)')
-    ax.set_ylabel('Δχ²  (TD=19 ms)')
-    ax.set_title(f'Dex profile — TD=19 ms  (k_det={k_det_best:.3f})')
-    ax.legend(fontsize=8)
-    ax.grid(True, alpha=0.3)
+        ax = axes[1]
+        ax.plot(Dex_grid, chi2_map_19[i_best] - chi2_19_min,
+                color="#4393c3", lw=1.8)
+        ax.axhline(delta_3, **_ci_kw)
+        ax.axvline(Dex_19_best, **_best_kw,
+                   label=f"$D_{{ex,19}}$ = {Dex_19_best:.3f} µm²/ms")
+        ax.set_xlabel("$D_{ex}$ (µm²/ms)")
+        ax.set_ylabel("$\\Delta\\chi^2$  (TD = 19 ms)")
+        ax.set_xlim(1.0, 3.0)
+        ax.legend(fontsize=8.5, frameon=False)
+        ax.grid(True, alpha=0.2, lw=0.6)
+        for sp in ("top", "right"): ax.spines[sp].set_visible(False)
+        ax.text(0.03, 0.97, "(B)", transform=ax.transAxes,
+                va="top", ha="left", fontsize=11, fontweight="bold")
 
-    ax = axes[2]
-    ax.plot(Dex_grid, chi2_map_49[i_best] - chi2_49_min, color='tab:orange', lw=2)
-    ax.axhline(delta_3, color='red', ls='--', lw=1.5)
-    ax.axvline(Dex_49_best, color='red', lw=1.5, ls=':',
-               label=f'Dex_49 = {Dex_49_best:.3f}')
-    ax.set_xlabel('Dex (µm²/ms)')
-    ax.set_ylabel('Δχ²  (TD=49 ms)')
-    ax.set_title(f'Dex profile — TD=49 ms  (k_det={k_det_best:.3f})')
-    ax.legend(fontsize=8)
-    ax.grid(True, alpha=0.3)
+        ax = axes[2]
+        ax.plot(Dex_grid, chi2_map_49[i_best] - chi2_49_min,
+                color="#d6604d", lw=1.8)
+        ax.axhline(delta_3, **_ci_kw)
+        ax.axvline(Dex_49_best, **_best_kw,
+                   label=f"$D_{{ex,49}}$ = {Dex_49_best:.3f} µm²/ms")
+        ax.set_xlabel("$D_{ex}$ (µm²/ms)")
+        ax.set_ylabel("$\\Delta\\chi^2$  (TD = 49 ms)")
+        ax.set_xlim(1.0, 3.0)
+        ax.legend(fontsize=8.5, frameon=False)
+        ax.grid(True, alpha=0.2, lw=0.6)
+        for sp in ("top", "right"): ax.spines[sp].set_visible(False)
+        ax.text(0.03, 0.97, "(C)", transform=ax.transAxes,
+                va="top", ha="left", fontsize=11, fontweight="bold")
 
-    plt.suptitle(
-        f'Joint inference (shared k_det)  |  k_r={k_r} fixed\n'
-        f'k_det={k_det_best:.3f} [{k_det_ci[0]:.3f}, {k_det_ci[1]:.3f}]  |  '
-        f'Dex_19={Dex_19_best:.3f} [{Dex_19_ci[0]:.3f}, {Dex_19_ci[1]:.3f}]  |  '
-        f'Dex_49={Dex_49_best:.3f} [{Dex_49_ci[0]:.3f}, {Dex_49_ci[1]:.3f}]  |  '
-        f'f_eff={f_eff_best:.3f}',
-        fontsize=10)
-    plt.tight_layout()
-    plt.show()
+        if fig_label:
+            fig.text(0.5, 1.01, fig_label, ha="center", va="bottom",
+                     fontsize=11, transform=fig.transFigure)
+
+        fig.tight_layout(w_pad=2.0)
+
+        if save_dir is not None:
+            import os as _os
+            _os.makedirs(save_dir, exist_ok=True)
+            _sfx = fig_label.replace(" ", "_").replace("|", "").replace("/", "-") \
+                   if fig_label else "ROI"
+            _fpath = _os.path.join(save_dir, f"fig_joint_inference_{_sfx}.png")
+            fig.savefig(_fpath, dpi=300, bbox_inches="tight")
+            print(f"  Saved: {_fpath}")
+
+        plt.show()
 
     n_pts = len(bv_19) + len(bv_49)
     print(f"  χ²_total_min = {chi2_total:.3f}  (N={n_pts} points, 3 free params)")
@@ -1268,7 +1348,7 @@ def infer_dex_fixed_kdet(df_dwi, cell_areas, max_calipers, min_calipers,
     from scipy.stats import chi2 as chi2_dist
 
     if Dex_grid is None:
-        Dex_grid = np.linspace(0.5, 3.5, 80)
+        Dex_grid = np.linspace(1.0, 3.0, 400)  # LUT support is [1, 3] µm²/ms
 
     # --- 1. Histological parameters ---
     mean_max = np.mean(max_calipers);  mean_min = np.mean(min_calipers)
@@ -1323,9 +1403,8 @@ def infer_dex_fixed_kdet(df_dwi, cell_areas, max_calipers, min_calipers,
         j_best  = int(np.nanargmin(loss))
         Dex_best = float(Dex_grid[j_best])
         loss_min = float(loss[j_best])
-        d_in     = Dex_grid[loss < loss_min + delta_1]
-        ci       = ((float(d_in.min()), float(d_in.max()))
-                    if len(d_in) else (Dex_best, Dex_best))
+        ci = _ci_bounds_interp(Dex_grid, loss, loss_min, delta_1,
+                                warn_label=f"infer_dex_fixed_kdet TD={TD}")
         return Dex_best, loss_min, ci, loss
 
     Dex_19_best, chi2_19, Dex_19_ci, loss_19 = _fit_td(bv_19, S_19, sigma_19, 19)
@@ -1446,7 +1525,7 @@ from scipy.stats import chi2 as chi2_dist
 k_r_fixed      = 1.0
 exp_infer      = 3
 TD_list        = [19, 49]
-Dex_grid_inf   = np.linspace(0.5, 3.5, 80)
+Dex_grid_inf   = np.linspace(1.0, 3.0, 400)  # LUT support is [1, 3] µm²/ms
 k_det_grid_inf = np.linspace(0.05, 1.0, 50)
 slice_width_um = 4
 

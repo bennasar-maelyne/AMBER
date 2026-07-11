@@ -129,7 +129,10 @@ def extract_patient_curves(data_dict, slice_idx, center, roi_size, roi_type='squ
     else:
         mask = np.sqrt((Y - center[0])**2 + (X - center[1])**2) <= roi_size
 
-    noise_factor = 1 / np.sqrt(32)
+    n_valid = np.sum(~np.isnan(noise_slice[:, :, 0][mask]))
+    # 1/sqrt(32): averaging over 32 gradient directions
+    # 1/sqrt(n_valid): averaging over ROI voxels
+    noise_factor = 1 / np.sqrt(32 * max(n_valid, 1))
     mean_signals, std_signals, mean_noise = [], [], []
     for i in range(num_b_volumes):
         mean_signals.append(np.nanmean(signal_slice[:, :, i][mask]))

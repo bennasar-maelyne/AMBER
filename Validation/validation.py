@@ -47,6 +47,7 @@ sequence_lut = {
     'bvecs': np.array([[_bvecs]]),
 }
 params_lut = np.array(params_lut)
+print(sequence_lut["bval"])
 
 # Patch lut_utils functions to use the local sequence_lut
 import lut_utils as _lut
@@ -314,75 +315,89 @@ for _, combo in combos.iterrows():
 # # Merged signal per patient — all ROIs aggregated
 
 # %%
-for pat_id in Patient:
-    pat_key  = f"Patient_{pat_id}"
-    pat_rows = df_summary[df_summary["Patient"] == pat_id]
-    if pat_rows.empty:
-        continue
+_FIG_DIR_VAL = os.path.join(os.path.dirname(os.path.abspath(__file__))
+                             if "__file__" in dir() else os.getcwd(),
+                             "..", "Paper", "Figures")
+os.makedirs(_FIG_DIR_VAL, exist_ok=True)
 
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+_PUB_RC_VAL = {"font.family": "serif", "font.size": 11, "axes.linewidth": 0.8}
+_he_selected = {1: "H&E_2", 3: "H&E_1"}
+_panel_labels = ["A", "B", "C", "D"]
 
-    for ax, TD_val in zip(axes, TD_list):
-        td_key  = f"TD_{TD_val}"
-        if pat_rows.empty:
-            ax.set_visible(False)
-            continue
+with plt.rc_context(_PUB_RC_VAL):
+    fig, axes = plt.subplots(2, 2, figsize=(11, 8.5), sharex=False, sharey=False)
 
-        df_td     = _dwi_td(pat_id, TD_val)
-        bvals_dwi = df_td["b"].to_numpy()
-
-        ax.fill_between(df_td["b"],
-                        df_td["signal"] - df_td["noise"],
-                        df_td["signal"] + df_td["noise"],
-                        color="tab:gray", alpha=0.3, label="DWI noise")
-        ax.plot(df_td["b"], df_td["signal"],
-                "o-", color="tab:gray", lw=2, ms=5, label="Measured DWI", zorder=5)
-
-        # Use only the most representative H&E slide per patient:
-        # Patient 1 → H&E_2 (multiple ROIs, more representative)
-        # Patient 3 → H&E_1 (only slide available)
-        _he_selected = {1: "H&E_2", 3: "H&E_1"}
+    for row_idx, pat_id in enumerate(Patient):
+        pat_key  = f"Patient_{pat_id}"
+        pat_rows = df_summary[df_summary["Patient"] == pat_id]
         he_key_target = _he_selected.get(pat_id)
 
-        sig_means_all, p_lows_all, p_highs_all, n_he = [], [], [], 0
-        for he_key, he_data in _spatial_json.get(pat_key, {}).items():
-            if he_key != he_key_target:
+        for col_idx, TD_val in enumerate(TD_list):
+            ax = axes[row_idx, col_idx]
+            panel_idx = row_idx * 2 + col_idx
+            td_key = f"TD_{TD_val}"
+            if pat_rows.empty:
+                ax.set_visible(False)
                 continue
-            td_data = (he_data.get(f"exp_{exp_merged}", {})
-                              .get("full_slide", {}).get(td_key, {}))
-            if not td_data:
+
+            df_td     = _dwi_td(pat_id, TD_val)
+            bvals_dwi = df_td["b"].to_numpy()
+
+            ax.fill_between(df_td["b"],
+                            df_td["signal"] - df_td["noise"],
+                            df_td["signal"] + df_td["noise"],
+                            color="#888888", alpha=0.25, label="DWI noise band")
+            ax.plot(df_td["b"], df_td["signal"],
+                    "o-", color="#444444", lw=1.8, ms=5,
+                    label="Measured DWI", zorder=5)
+
+            sig_means_all, p_lows_all, p_highs_all = [], [], []
+            for he_key, he_data in _spatial_json.get(pat_key, {}).items():
+                if he_key != he_key_target:
+                    continue
+                td_data = (he_data.get(f"exp_{exp_merged}", {})
+                                  .get("full_slide", {}).get(td_key, {}))
+                if not td_data:
+                    continue
+                entry = next(iter(td_data.values()))
+                bv    = np.array(entry["bval"])
+                mask  = bv <= 7.5
+                sig_means_all.append(np.interp(bvals_dwi, bv[mask],
+                                               np.array(entry["signals_mean"])[mask]))
+                p_lows_all.append(np.interp(bvals_dwi, bv[mask],
+                                            np.array(entry["p_low"])[mask]))
+                p_highs_all.append(np.interp(bvals_dwi, bv[mask],
+                                             np.array(entry["p_high"])[mask]))
+
+            if not sig_means_all:
                 continue
-            entry = next(iter(td_data.values()))
-            bv    = np.array(entry["bval"])
-            mask  = bv <= 7.5
-            sig_means_all.append(np.interp(bvals_dwi, bv[mask],
-                                           np.array(entry["signals_mean"])[mask]))
-            p_lows_all.append(np.interp(bvals_dwi, bv[mask],
-                                        np.array(entry["p_low"])[mask]))
-            p_highs_all.append(np.interp(bvals_dwi, bv[mask],
-                                         np.array(entry["p_high"])[mask]))
-            n_he += 1
 
-        if not sig_means_all:
-            continue
+            sig_mean    = np.array(sig_means_all).mean(axis=0)
+            p_low_mean  = np.array(p_lows_all).mean(axis=0)
+            p_high_mean = np.array(p_highs_all).mean(axis=0)
 
-        sig_mean   = np.array(sig_means_all).mean(axis=0)
-        p_low_mean = np.array(p_lows_all).mean(axis=0)
-        p_high_mean = np.array(p_highs_all).mean(axis=0)
+            ax.fill_between(bvals_dwi, p_low_mean, p_high_mean,
+                            color="#2166ac", alpha=0.18,
+                            label="Bootstrap 95% CI")
+            ax.plot(bvals_dwi, sig_mean, "o-", color="#2166ac",
+                    lw=1.8, ms=5, zorder=4, label="Synthetic DWI (mean)")
 
-        ax.fill_between(bvals_dwi, p_low_mean, p_high_mean,
-                        color="tab:blue", alpha=0.2, label="Bootstrap 95% CI (spatial)")
-        ax.plot(bvals_dwi, sig_mean, "o-", color="tab:blue", lw=2, ms=5, zorder=4,
-                label=f"Sim mean ({he_key_target})")
-        ax.set_xlabel("b-value (ms/µm²)")
-        ax.set_ylabel("Normalised signal S/S₀")
-        ax.set_title(f"TD = {TD_val} ms  |  {he_key_target}", fontsize=10)
-        ax.legend(fontsize=7, ncol=2)
-        ax.grid(True, alpha=0.3)
+            ax.set_xlabel("$b$-value (ms/µm²)")
+            ax.set_ylabel("Normalised signal $S/S_0$")
+            ax.set_title(f"Patient {pat_id} | TD = {TD_val} ms", fontsize=10.5)
+            ax.grid(True, alpha=0.2, lw=0.6)
+            for spine in ("top", "right"):
+                ax.spines[spine].set_visible(False)
+            ax.text(0.03, 0.97, f'({_panel_labels[panel_idx]})', transform=ax.transAxes,
+                    va="top", ha="left", fontsize=11, fontweight="bold")
 
-    fig.suptitle(f"Patient {pat_id} — all ROIs merged | exp={exp_merged}",
-                 fontsize=13, fontweight="bold")
-    fig.tight_layout()
+    handles, labels = axes[0, 0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=4, frameon=False,
+               fontsize=10, bbox_to_anchor=(0.5, -0.02))
+    fig.tight_layout(rect=(0, 0.04, 1, 1))
+    fname = os.path.join(_FIG_DIR_VAL, "fig6_merged_signal_combined.png")
+    fig.savefig(fname, dpi=300, bbox_inches="tight")
+    print(f"Saved: {fname}")
     plt.show()
 
 # %% [markdown]

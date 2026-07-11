@@ -46,3 +46,10 @@ amber/Plots/
 # Fichiers temporaires / poubelle
 Validation/garbage*
 Validation/*_old.json
+
+# Perso
+internship-report*/
+.mcp.json
+
+# Simulations Monte Carlo optimisation (trop lourd)
+monte-carlo-simulation-sphere-PGSE-main/data/AMBER-opti/

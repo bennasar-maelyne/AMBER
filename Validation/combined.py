@@ -13,6 +13,8 @@
 # # Libraries
 
 # %%
+from pathlib import Path
+
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
 import numpy as np
@@ -174,44 +176,103 @@ plot_signal_decay(
 # Show the DWI slice with tumor mask contour and the selected ROI overlay.
 
 # %%
-def plot_dwi_slice_with_roi(data_dict, patient_label, slice_idx,
-                             center, roi_size, b_vol_idx=0):
-    """
-    Display the DWI slice with tumor mask contour and the selected ROI square.
+_FIGURES_DIR = Path("../Paper/Figures")
 
-    Parameters
-    ----------
-    b_vol_idx : index in the b-value volume to display (0 = first non-zero b-value)
-    """
+_PUB_RC = {"font.family": "serif", "font.size": 11}
+
+
+def _extract_slice_data(data_dict, slice_idx, center, roi_size, b_vol_idx=0):
+    """Return image, mask, roi_overlay, b-value, vmin, vmax for one DWI slice."""
     mri   = np.transpose(data_dict["fullbrain_all"], (0, 2, 1, 3))
     mask  = np.transpose(data_dict["tumor_mask"],    (0, 2, 1))
     bvals = data_dict["bv_all"].flatten()
     nonzero_idx = np.where(bvals > 0)[0]
-
     vol_idx = nonzero_idx[b_vol_idx] if b_vol_idx < len(nonzero_idx) else nonzero_idx[0]
     b_shown = bvals[vol_idx]
-
     sl_img  = mri[:, :, slice_idx, vol_idx]
     sl_mask = mask[:, :, slice_idx].astype(bool)
-
     H, W = sl_img.shape
     cy, cx = center
     roi_img = np.zeros((H, W))
     roi_img[max(0, cy - roi_size):min(H, cy + roi_size + 1),
             max(0, cx - roi_size):min(W, cx + roi_size + 1)] = 1
-
-    fig, ax = plt.subplots(figsize=(6, 6))
-    ax.imshow(sl_img, cmap='gray')
-    ax.contour(sl_mask, colors='cyan', linewidths=1.5)
-    ax.contour(roi_img, colors='red',  linewidths=2)
-    ax.set_title(f"{patient_label} — slice {slice_idx} | b={b_shown:.0f} s/mm²\n"
-                 f"ROI center=({cx},{cy}), size={roi_size}")
-    ax.axis('off')
-    plt.tight_layout()
-    plt.show()
+    brain_px = sl_img[sl_img > 0]
+    vmin, vmax = (np.percentile(brain_px, [2, 98]) if brain_px.size
+                  else (sl_img.min(), sl_img.max()))
+    return sl_img, sl_mask, roi_img, float(b_shown), vmin, vmax
 
 
-plot_dwi_slice_with_roi(data,   "Patient 1", slice_idx=36, center=(49, 49), roi_size=3)
-plot_dwi_slice_with_roi(data_3, "Patient 3", slice_idx=31, center=(73, 28), roi_size=3)
+def _draw_slice(ax, sl_img, sl_mask, roi_img, b_shown, vmin, vmax,
+                patient_label, panel_label=None):
+    ax.imshow(sl_img, cmap="gray", vmin=vmin, vmax=vmax, origin="upper")
+    ax.contour(sl_mask, colors="#00CFFF", linewidths=1.0)
+    ax.contour(roi_img, colors="#FF4444",  linewidths=1.5)
+    _kw = dict(transform=ax.transAxes, color="white", fontsize=9,
+               bbox=dict(boxstyle="round,pad=0.25", fc="black", alpha=0.55, lw=0))
+    ax.text(0.03, 0.97, f"$b$ = {b_shown/1000:.4g} ms/µm²", va="top",  ha="left", **_kw)
+    ax.text(0.03, 0.03, patient_label,                      va="bottom", ha="left", **_kw)
+    if panel_label:
+        ax.text(0.97, 0.86, f"({panel_label})", transform=ax.transAxes,
+                color="white", fontsize=12, fontweight="bold",
+                va="top", ha="right")
+    ax.axis("off")
+
+
+def plot_dwi_slice_with_roi(data_dict, patient_label, slice_idx,
+                             center, roi_size, b_vol_idx=0,
+                             save_dir=_FIGURES_DIR, panel_label=None):
+    sl_img, sl_mask, roi_img, b_shown, vmin, vmax = _extract_slice_data(
+        data_dict, slice_idx, center, roi_size, b_vol_idx)
+    with plt.rc_context(_PUB_RC):
+        fig, ax = plt.subplots(figsize=(4, 4))
+        _draw_slice(ax, sl_img, sl_mask, roi_img, b_shown, vmin, vmax,
+                    patient_label, panel_label)
+        fig.tight_layout(pad=0.4)
+        if save_dir is not None:
+            out_dir = Path(save_dir)
+            out_dir.mkdir(parents=True, exist_ok=True)
+            suffix = f"_{panel_label}" if panel_label else ""
+            fname  = f"DWI_slice_{patient_label.replace(' ', '_')}_b{b_shown:.0f}{suffix}.png"
+            fig.savefig(out_dir / fname, dpi=300, bbox_inches="tight")
+            print(f"Saved: {out_dir / fname}")
+        plt.show()
+
+
+def make_combined_dwi_panel(cases, save_dir=_FIGURES_DIR, fname="fig1_DWI_context.png"):
+    """
+    Create a publication-ready multi-panel DWI figure.
+
+    cases : list of (data_dict, patient_label, slice_idx, center, roi_size, panel_label)
+    """
+    n = len(cases)
+    with plt.rc_context(_PUB_RC):
+        fig, axes = plt.subplots(1, n, figsize=(4 * n, 4.2))
+        if n == 1:
+            axes = [axes]
+        for ax, (dd, plabel, sidx, ctr, rsz, pan) in zip(axes, cases):
+            sl_img, sl_mask, roi_img, b_shown, vmin, vmax = _extract_slice_data(
+                dd, sidx, ctr, rsz)
+            _draw_slice(ax, sl_img, sl_mask, roi_img, b_shown, vmin, vmax,
+                        plabel, pan)
+        fig.tight_layout(pad=0.4)
+        if save_dir is not None:
+            out_dir = Path(save_dir)
+            out_dir.mkdir(parents=True, exist_ok=True)
+            fig.savefig(out_dir / fname, dpi=300, bbox_inches="tight")
+            print(f"Saved: {out_dir / fname}")
+        plt.show()
+
+
+# Individual figures (also kept for flexibility)
+plot_dwi_slice_with_roi(data,   "Patient 1", slice_idx=36, center=(49, 49),
+                        roi_size=3, panel_label="A")
+plot_dwi_slice_with_roi(data_3, "Patient 3", slice_idx=31, center=(73, 28),
+                        roi_size=3, panel_label="B")
+
+# Combined A/B panel figure for the article
+make_combined_dwi_panel([
+    (data,   "Patient 1", 36, (49, 49), 3, "A"),
+    (data_3, "Patient 3", 31, (73, 28), 3, "B"),
+])
 
 # %%
