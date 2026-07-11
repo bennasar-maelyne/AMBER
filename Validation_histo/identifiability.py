@@ -499,9 +499,9 @@ with plt.rc_context(_PUB_RC_ID):
     bars = ax.bar(df_fim["label"], np.log10(df_fim["cond"]),
                   color=_colors, alpha=0.85, edgecolor="white", width=0.6)
     ax.axhline(4, color="#f1a340", ls="--", lw=1.2,
-               label="Marginal threshold ($\kappa$ = 10⁴)")
+               label="Marginal threshold ($\\kappa$ = 10⁴)")
     ax.axhline(6, color="#d7191c", ls="--", lw=1.2,
-               label="Poor threshold ($\kappa$ = 10⁶)")
+               label="Poor threshold ($\\kappa$ = 10⁶)")
     ax.bar_label(bars, fmt="%.1f", fontsize=8.5, padding=3)
     ax.set_ylabel("$\\log_{10}(\\kappa)$ (condition number)")
     ax.tick_params(axis="x", rotation=35, labelsize=9)

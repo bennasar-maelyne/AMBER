@@ -168,8 +168,6 @@ _roi_colors = plt.colormaps["tab10"](np.linspace(0, 0.8, 8))
 # One figure per (Patient, H&E, ROI): two subplots TD=19 | TD=49.
 # Central curve = best-fit from df_summary. CI = combined bootstrap on cells + Dex + k_det.
 
-from lut_utils import get_signal_curve_lut as _gsc_raw
-
 def _get_signal(f, Dex, r, rsd, TD):
     return get_signal_curve_lut(f, Dex, r, rsd, TD, tri, signals_lut, params_lut)
 

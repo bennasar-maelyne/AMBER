@@ -37,7 +37,6 @@ def main():
     tri = build_tri(params_lut)
 
     b0_idx    = int(np.where(bval == 0)[0][0])
-    bval_use  = np.delete(bval, b0_idx)
     b_use_idx = [i for i in range(len(bval)) if i != b0_idx]
 
     pairs = list(itertools.combinations([p["name"] for p in CATALOG], 2))

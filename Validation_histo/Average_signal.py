@@ -17,17 +17,12 @@
 # # Libraries
 
 # %%
-from scipy.io import loadmat
 import matplotlib.pyplot as plt
 import numpy as np
-from ipywidgets import interact, IntSlider
 import os
 import pandas as pd
 import json
 from scipy.spatial import Delaunay
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from scipy.spatial import ConvexHull
-import math
 
 # %% [markdown]
 # # Extraction of parameters from file
@@ -981,9 +976,6 @@ def infer_Dex_shrinkage_chi2(df_dwi, cell_areas, max_calipers, min_calipers,
     # (LR statistic -2·ΔNLL ~ χ²(2) → same 95% percentile)
     chi2_threshold = chi2_dist.ppf(0.95, df=2)          # ≈ 5.99
     delta = chi2_threshold / 2 if use_rician else chi2_threshold
-
-    # For backwards compatibility keep chi2_map as an alias
-    chi2_map = loss_map
 
     # Marginal profiles (min over the other axis), used both for the CI and
     # for the marginal-profile plot below.
@@ -2611,7 +2603,6 @@ def bootstrap_signal_from_cells(cell_areas, max_calipers, min_calipers, roi_area
 
     for _ in range(n_bootstrap):
         idx = np.random.choice(n_cells, size=n_cells, replace=True)
-        areas_b   = cell_areas[idx]
         max_cal_b = max_calipers[idx]
         min_cal_b = min_calipers[idx]
 
@@ -2629,7 +2620,7 @@ def bootstrap_signal_from_cells(cell_areas, max_calipers, min_calipers, roi_area
         )
 
         r3D     = 1.27 * r2D
-        std_r3D = 1.27 * std_r2D 
+        std_r3D = 1.27 * std_r2D
 
         # Abercrombie's 3D density estimation
         N_v    = n_cells / ((slice_width_um + 2 * r2D) * roi_area_um2)
@@ -2678,9 +2669,7 @@ def bootstrap_signal_from_density(df_roi, roi_area_um2, slice_width_um, Dex_cent
         # Resampling with replacement → some cells counted
         # multiple times, others absent → variable effective density
         idx      = np.random.choice(n_cells, size=n_cells, replace=True)
-        n_eff    = len(np.unique(idx))   # number of unique cells drawn
 
-        areas_b   = cell_areas[idx]
         max_cal_b = max_calipers[idx]
         min_cal_b = min_calipers[idx]
 

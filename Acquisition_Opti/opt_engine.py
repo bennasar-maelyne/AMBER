@@ -352,8 +352,6 @@ def run():
     b0_idx    = int(np.where(bval == 0)[0][0])
     bval_use  = np.delete(bval, b0_idx)
     b_use_idx = [i for i in range(len(bval)) if i != b0_idx]
-    N_BVAL_USE = len(bval_use)
-    N_TD       = len(TD)
 
     # ── Sample each phenotype ──────────────────────────────────────────────────
     print(f"\nSampling {N_SAMPLES} LHS points per phenotype...")

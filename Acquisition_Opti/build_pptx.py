@@ -4,11 +4,10 @@ Template: Paper/Meeting_03-25.pptx (même thème/fonts).
 """
 
 import os
-import io
 from PIL import Image
 
 from pptx import Presentation
-from pptx.util import Inches, Pt, Emu
+from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
 from pptx.oxml.ns import qn

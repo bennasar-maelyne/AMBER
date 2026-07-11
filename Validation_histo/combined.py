@@ -20,7 +20,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from ipywidgets import interact, IntSlider, FloatSlider, Dropdown
 from skimage.draw import disk
-import pandas as pd
 
 from lut_utils import extract_patient_curves
 

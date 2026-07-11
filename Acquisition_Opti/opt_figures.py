@@ -16,8 +16,6 @@ import itertools
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
-from matplotlib.patches import FancyArrowPatch
 from tumor_catalog import CATALOG
 
 # ── Paths ──────────────────────────────────────────────────────────────────────

@@ -45,7 +45,6 @@ import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from opt_engine import load_lut, build_tri, interpolate_batch

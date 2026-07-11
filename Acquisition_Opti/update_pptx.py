@@ -4,14 +4,11 @@ Répond au mail de Josh sur T2 et complète toutes les slides vides avec les fig
 """
 
 import os
-import copy
-from lxml import etree
 
 from pptx import Presentation
-from pptx.util import Inches, Pt, Emu
+from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
-from pptx.oxml.ns import qn
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT     = os.path.abspath(os.path.join(THIS_DIR, ".."))
@@ -74,8 +71,6 @@ def add_picture_centered(slide, img_path, top_in, max_w_in, max_h_in):
 def add_textbox(slide, text_lines, left, top, width, height,
                 font_size=13, bold=False, color=None, align=PP_ALIGN.LEFT,
                 line_spacing=1.15):
-    from pptx.oxml import parse_xml
-    from pptx.oxml.ns import nsmap
     txBox = slide.shapes.add_textbox(Inches(left), Inches(top),
                                      Inches(width), Inches(height))
     tf = txBox.text_frame
