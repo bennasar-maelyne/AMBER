@@ -30,10 +30,10 @@ __pycache__/
 *.zip
 
 # Données patients
-Validation/Patient_1/
-Validation/Patient_2/
-Validation/Patient_3/
-Validation/Qupath_project/
+Validation_histo/Patient_1/
+Validation_histo/Patient_2/
+Validation_histo/Patient_3/
+Validation_histo/Qupath_project/
 
 # Sphères Monte Carlo (simulation data)
 monte-carlo-simulation-sphere-PGSE-main/data/AMBER_maelyne/lognorm_population_RealisticTests2_V3/sphere*
@@ -44,8 +44,18 @@ monte-carlo-simulation-sphere-PGSE-main/data/AMBER_maelyne/lognorm_population_Re
 amber/Plots/
 
 # Fichiers temporaires / poubelle
-Validation/garbage*
-Validation/*_old.json
+Validation_histo/garbage*
+Validation_histo/*_old.json
+
+# Outputs orphelins (non chargés par le pipeline actuel, gardés localement)
+Validation_histo/signal_results.json
+Validation_histo/signal_results_geom.json
+Validation_histo/signal_results_shrinkage.json
+Validation_histo/signal_results_shrinkage_1000.json
+Validation_histo/signal_results_shrinkage_579.json
+
+# Résultats d'optimisation (régénérables)
+Acquisition_Opti/results/
 
 # Perso
 internship-report*/

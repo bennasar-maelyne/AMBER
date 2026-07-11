@@ -1,1 +1,0 @@
-{"timestamp":1762897904571,"imageType":"BRIGHTFIELD_H_E","server":{"width":64950,"height":62983,"sizeC":3,"sizeZ":1,"sizeT":1},"hierarchy":{"nObjects":16041,"objectTypeCounts":{"Root objects":1,"Annotations":3,"Cells":16037},"annotationClassificationCounts":{"Tumor":3},"detectionClassificationCounts":{"Unclassified":16037}}}

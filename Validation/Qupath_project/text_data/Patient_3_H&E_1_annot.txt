@@ -1,5 +1,0 @@
-Image	Object ID	Object type	Name	Classification	Parent	ROI	Centroid X µm	Centroid Y µm	Area µm^2	Perimeter µm	Num Detections
-CON_03- H & E 1.svs	e19f7b52-3ab6-4540-8a63-346406b90162	Annotation	ROI2	Tumor	Root object (Image)	Rectangle	3131.4	2867.9	141756.4	1511.5	1032
-CON_03- H & E 1.svs	28e9a1f5-48c9-4f6f-853c-33a6e6f0929b	Annotation	ROI4	Tumor	Root object (Image)	Rectangle	3213.3	5876.5	187363.3	1734.3	955
-CON_03- H & E 1.svs	76f36018-34d9-4ff3-99c1-007653ed5e27	Annotation	ROI1	Tumor	Root object (Image)	Rectangle	2927.1	1654	146179.9	1638	990
-CON_03- H & E 1.svs	6b922d95-87ac-49a2-bece-e9843048315f	Annotation	ROI3	Tumor	Root object (Image)	Rectangle	3875	5491.3	197120.5	1781.1	1176
